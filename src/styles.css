@@ -1,37 +1,43 @@
 :root {
-  --bg: #F6F6F4;
+  --bg: #F2F2F7;
   --surface: #FFFFFF;
-  --surface-2: #F8F8F6;
-  --chip: #F1F1EE;
-  --text: #17171A;
-  --text-2: #3A3B40;
-  --muted: #5F6068;
-  --faint: #6B6C73;
-  --chevron: #9A9BA1;
-  --border: #E4E4E0;
-  --border-2: #DADAD5;
-  --divider: #EFEFEC;
+  --surface-2: #F2F2F7;
+  --chip: #F2F2F7;
+  --field: #E3E3E8;
+  --text: #1C1C1E;
+  --text-2: #3C3C43;
+  --muted: #6E6E73;
+  --faint: #6E6E73;
+  --placeholder: #545458;
+  --chevron: #AEAEB2;
+  --border: #E5E5EA;
+  --border-2: #D1D1D6;
+  --divider: #D1D1D6;
   --accent: #C2272D;
   --accent-text: #A51F25;
-  --accent-soft: #FBEAEA;
+  --accent-soft: rgba(194, 39, 45, 0.1);
+  --danger: #D70015;
   --radical: #1F5FBF;
   --radical-soft: #EAF1FB;
   --stroke-todo: #E6E6E2;
   --grid-line: #E8CFD0;
   --grid-border: #D9B8B9;
   --grid-bg: #FFFDFC;
-  --font: Inter, 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Noto Sans SC', system-ui, 'Segoe UI', Roboto, sans-serif;
   /* Capacitor 8 injects --safe-area-inset-*; browsers fall back to env(). */
   --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --hz: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* Room left under scrolling content for the floating tab bar. */
+  --tabbar-space: calc(var(--sab) + 100px);
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; background: #ECECE8; color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
 a { color: var(--accent-text); text-decoration: none; }
 button { font: inherit; color: inherit; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type='search']::-webkit-search-cancel-button { display: none; }
 
 .app {
   max-width: 520px;
@@ -44,53 +50,95 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   padding-bottom: var(--sab);
 }
 .screen { flex: 1; display: flex; flex-direction: column; min-height: calc(100dvh - var(--sat) - var(--sab)); }
+.screen.with-tabbar { padding-bottom: var(--tabbar-space); }
 .hz { font-family: var(--hz); }
 
 .icon-btn {
   width: 44px; height: 44px; border: none; background: transparent; border-radius: 22px;
   display: inline-flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; flex-shrink: 0;
 }
-.icon-btn:hover { background: rgba(23, 23, 26, 0.05); }
+.icon-btn:hover { background: rgba(0, 0, 0, 0.05); }
+
+/* Round white button used for back / actions in nav rows */
+.round-btn {
+  height: 44px; min-width: 44px; border: none; border-radius: 22px; background: var(--surface); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.link-btn { border: none; background: none; color: var(--accent-text); font-size: 17px; cursor: pointer; padding: 8px 4px; }
+
+.large-title { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+
+/* iOS inset grouped list */
+.group-header {
+  margin: 24px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.02em; color: var(--muted);
+}
+.group { background: var(--surface); border-radius: 14px; overflow: hidden; }
+.group-footer { margin: 8px 0 0; padding: 0 16px; font-size: 13px; line-height: 1.45; color: var(--muted); }
 
 .section-title {
-  margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+  margin: 0; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted);
 }
 
 /* Search bar used on Search and Results screens */
 .topbar {
   position: sticky; top: var(--sat); z-index: 5;
-  padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 10px;
-  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg);
 }
-.topbar-row { display: flex; align-items: center; gap: 8px; }
+.topbar-row { display: flex; align-items: center; gap: 10px; }
 .search-field {
-  flex: 1; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px;
-  background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; min-width: 0;
+  flex: 1; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 4px 0 12px;
+  background: var(--field); border-radius: 12px; min-width: 0; color: var(--placeholder);
+  box-shadow: 0 0 0 2px var(--accent);
 }
-.search-field.quiet { background: var(--chip); border-color: transparent; }
+.search-field.quiet { box-shadow: none; }
 .search-field input {
-  flex: 1; min-width: 0; border: none; outline: none; font: 500 17px var(--font); color: var(--text); background: transparent;
+  flex: 1; min-width: 0; border: none; outline: none; font: 400 17px var(--font); color: var(--text); background: transparent;
 }
+.search-field input::placeholder { color: var(--placeholder); }
 .search-field input:focus-visible { outline: none; }
-.clear-btn {
-  width: 32px; height: 32px; border: none; border-radius: 16px; background: #EAEAE6; color: var(--text-2);
-  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+.field-btn {
+  width: 36px; height: 36px; border: none; border-radius: 10px; background: transparent; color: var(--accent);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0;
 }
+.field-btn.on { background: var(--accent-soft); }
+.clear-btn {
+  width: 28px; height: 28px; border: none; border-radius: 14px; background: var(--chevron); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0;
+}
+
+/* iOS segmented control */
+.segmented {
+  display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 2px; padding: 2px;
+  background: var(--field); border-radius: 10px;
+}
+.segmented button {
+  height: 32px; border: none; border-radius: 8px; background: transparent; font-size: 14px; font-weight: 500;
+  color: var(--text-2); cursor: pointer; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.segmented button.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
+.segmented .count { font-size: 12px; color: var(--muted); font-weight: 500; }
 
 .state { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
 
-/* Rows */
+/* Rows inside a .group */
 .row-link {
-  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 8px 20px;
-  border-bottom: 1px solid var(--divider); color: var(--text); background: var(--surface);
+  position: relative; display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 14px 8px 16px;
+  color: var(--text); background: var(--surface);
 }
-.row-link:hover { background: #FBFBF9; }
-.row-hz { min-width: 64px; font-family: var(--hz); font-size: 22px; font-weight: 500; }
-.row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-link:hover { background: #FAFAFC; }
+.group > .row-link:not(:last-child)::after,
+.group > :not(:last-child) > .row-link::after {
+  content: ''; position: absolute; left: 16px; right: 0; bottom: 0; height: 0.5px; background: var(--divider);
+}
+.row-hz { min-width: 56px; font-family: var(--hz); font-size: 22px; font-weight: 500; }
+.row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .row-py { font-size: 14px; color: var(--accent-text); font-weight: 500; }
 .row-def { font-size: 15px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-mark.hit { font-weight: 700; color: var(--text); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; }
+mark.hit { font-weight: 700; color: var(--text); background: var(--accent-soft); border-radius: 4px; padding: 0 2px; }
 
 /* Opaque strip behind the Android status bar so scrolled content doesn't show through it. */
 .app::before {

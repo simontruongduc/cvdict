@@ -67,12 +67,12 @@ function splitOn(text, w) {
 </script>
 
 <template>
-  <div class="screen word">
+  <div class="screen with-tabbar word">
     <header class="word-header">
-      <button class="icon-btn" aria-label="Quay lại" @click="router.back()"><AppIcon name="back" /></button>
-      <div v-if="word" class="header-actions">
+      <button class="round-btn" aria-label="Quay lại" @click="router.back()"><AppIcon name="back" :stroke-width="2.2" /></button>
+      <div v-if="word" class="round-btn header-actions">
         <button class="icon-btn" :aria-label="saved ? 'Bỏ lưu từ' : 'Lưu từ'" :aria-pressed="saved" @click="toggleSave">
-          <AppIcon :name="saved ? 'bookmark-filled' : 'bookmark'" :style="saved ? 'color: var(--accent)' : ''" />
+          <AppIcon :name="saved ? 'bookmark-filled' : 'bookmark'" :size="21" :style="saved ? 'color: var(--accent)' : ''" />
         </button>
         <button class="icon-btn" :aria-label="copied ? 'Đã sao chép' : 'Sao chép'" @click="copy">
           <AppIcon :name="copied ? 'check' : 'copy'" :size="20" />
@@ -101,41 +101,43 @@ function splitOn(text, w) {
         </div>
       </section>
 
-      <div class="panel">
-        <div class="tabs" role="tablist">
-          <button role="tab" :aria-selected="tab === 'meaning'" :class="['tab', { on: tab === 'meaning' }]" @click="setTab('meaning')">Ý nghĩa</button>
-          <button role="tab" :aria-selected="tab === 'write'" :class="['tab', { on: tab === 'write' }]" @click="setTab('write')">Cách viết</button>
+      <div class="body">
+        <div class="segmented tabs" role="tablist" aria-label="Nội dung">
+          <button role="tab" :aria-selected="tab === 'meaning'" :class="{ on: tab === 'meaning' }" @click="setTab('meaning')">Ý nghĩa</button>
+          <button role="tab" :aria-selected="tab === 'write'" :class="{ on: tab === 'write' }" @click="setTab('write')">Cách viết</button>
         </div>
 
-        <div v-if="tab === 'meaning'" class="panel-body">
-          <section v-for="e in word.entries" :key="e.id" class="block">
-            <h2 class="section-title">
+        <template v-if="tab === 'meaning'">
+          <section v-for="e in word.entries" :key="e.id">
+            <h2 class="group-header">
               Nghĩa<template v-if="multi"> · <span class="reading">{{ e.py }}</span><span v-if="e.t !== word.t" class="hz"> ({{ e.t }})</span></template>
             </h2>
-            <ol class="meanings">
-              <li v-for="(m, i) in e.meanings" :key="i">
-                <span class="num">{{ i + 1 }}</span>
-                <span>
-                  <template v-for="(sg, k) in segments(m)" :key="k">
+            <div class="group card-pad">
+              <ol class="meanings">
+                <li v-for="(m, i) in e.meanings" :key="i">
+                  <span class="num">{{ i + 1 }}</span>
+                  <span>
+                    <template v-for="(sg, k) in segments(m)" :key="k">
+                      <RouterLink v-if="sg.hz" :to="goWord(sg.hz)" class="ref"><span class="hz">{{ sg.hz }}</span> <span class="ref-py">{{ sg.py }}</span></RouterLink>
+                      <template v-else>{{ sg.text }}</template>
+                    </template>
+                  </span>
+                </li>
+              </ol>
+              <div v-if="e.measure.length" class="measure">
+                <span class="measure-label">Lượng từ</span>
+                <template v-for="(mw, i) in e.measure" :key="i">
+                  <template v-for="(sg, k) in segments(mw)" :key="k">
                     <RouterLink v-if="sg.hz" :to="goWord(sg.hz)" class="ref"><span class="hz">{{ sg.hz }}</span> <span class="ref-py">{{ sg.py }}</span></RouterLink>
                     <template v-else>{{ sg.text }}</template>
                   </template>
-                </span>
-              </li>
-            </ol>
-            <div v-if="e.measure.length" class="measure">
-              <span class="measure-label">Lượng từ</span>
-              <template v-for="(mw, i) in e.measure" :key="i">
-                <template v-for="(sg, k) in segments(mw)" :key="k">
-                  <RouterLink v-if="sg.hz" :to="goWord(sg.hz)" class="ref"><span class="hz">{{ sg.hz }}</span> <span class="ref-py">{{ sg.py }}</span></RouterLink>
-                  <template v-else>{{ sg.text }}</template>
                 </template>
-              </template>
+              </div>
             </div>
           </section>
 
-          <section v-if="word.chars.length" class="block">
-            <h2 class="section-title">Từng chữ</h2>
+          <section v-if="word.chars.length">
+            <h2 class="group-header">Từng chữ</h2>
             <div class="char-grid">
               <RouterLink v-for="c in word.chars" :key="c.id" :to="goWord(c.s)" class="char-card">
                 <span class="char-top"><span class="hz char-hz">{{ c.s }}</span><span class="char-py">{{ c.py }}</span></span>
@@ -144,34 +146,36 @@ function splitOn(text, w) {
             </div>
           </section>
 
-          <section v-if="word.phrases.length" class="block">
-            <h2 class="section-title">Câu / thành ngữ gợi ý</h2>
-            <RouterLink v-for="p in word.phrases" :key="p.id" :to="goWord(p.s)" class="phrase">
-              <div class="hz phrase-hz">{{ splitOn(p.s, word.s)[0] }}<span class="phrase-hit">{{ splitOn(p.s, word.s)[1] }}</span>{{ splitOn(p.s, word.s)[2] }}</div>
-              <div class="phrase-py">{{ p.py }}</div>
-              <div class="phrase-def">{{ p.def }}</div>
-            </RouterLink>
+          <section v-if="word.phrases.length">
+            <h2 class="group-header">Câu / thành ngữ gợi ý</h2>
+            <div class="phrases">
+              <RouterLink v-for="p in word.phrases" :key="p.id" :to="goWord(p.s)" class="phrase">
+                <div class="hz phrase-hz">{{ splitOn(p.s, word.s)[0] }}<span class="phrase-hit">{{ splitOn(p.s, word.s)[1] }}</span>{{ splitOn(p.s, word.s)[2] }}</div>
+                <div class="phrase-py">{{ p.py }}</div>
+                <div class="phrase-def">{{ p.def }}</div>
+              </RouterLink>
+            </div>
           </section>
 
-          <section v-if="word.compounds.length" class="block tight">
-            <h2 class="section-title compounds-title">Từ ghép chứa {{ word.s }} <span class="count">{{ word.compoundsTotal }}</span></h2>
-            <RouterLink v-for="c in compounds" :key="c.id" :to="goWord(c.s)" class="compound">
-              <span class="hz compound-hz">{{ c.s }}</span>
-              <span class="compound-body">
-                <span class="compound-py">{{ c.py }}</span>
-                <span class="compound-def">{{ c.def }}</span>
-              </span>
-              <AppIcon name="chevron" :size="16" style="color: var(--chevron); flex-shrink: 0" />
-            </RouterLink>
-            <button v-if="!showAllCompounds && word.compounds.length > 8" class="more" @click="showAllCompounds = true">
-              Xem thêm {{ word.compounds.length - 8 }} từ
-            </button>
+          <section v-if="word.compounds.length">
+            <h2 class="group-header">Từ ghép chứa {{ word.s }} <span class="count">{{ word.compoundsTotal }}</span></h2>
+            <div class="group">
+              <RouterLink v-for="c in compounds" :key="c.id" :to="goWord(c.s)" class="row-link compound">
+                <span class="hz compound-hz">{{ c.s }}</span>
+                <span class="row-body">
+                  <span class="compound-py">{{ c.py }}</span>
+                  <span class="compound-def">{{ c.def }}</span>
+                </span>
+                <AppIcon name="chevron" :size="14" :stroke-width="2.6" style="color: var(--chevron); flex-shrink: 0" />
+              </RouterLink>
+              <button v-if="!showAllCompounds && word.compounds.length > 8" class="more" @click="showAllCompounds = true">
+                Xem thêm {{ word.compounds.length - 8 }} từ
+              </button>
+            </div>
           </section>
+        </template>
 
-          <div class="credit">Nguồn: CVDICT · CC BY-SA 4.0</div>
-        </div>
-
-        <div v-else class="panel-body write">
+        <div v-else class="group card-pad write">
           <StrokeOrder v-if="writeChars.length" :chars="writeChars" />
           <p v-else class="state">Từ này không có chữ Hán để luyện viết.</p>
         </div>
@@ -181,66 +185,57 @@ function splitOn(text, w) {
 </template>
 
 <style scoped>
-.word-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 12px 0; }
-.header-actions { display: flex; gap: 4px; }
-.hero { padding: 8px 24px 20px; display: flex; flex-direction: column; gap: 10px; }
+.word-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 0; }
+.header-actions { padding: 0 2px; gap: 0; }
+.header-actions .icon-btn { width: 40px; height: 40px; }
+.hero { padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 8px; }
 .hero-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
-.hero-hz { margin: 0; font-size: 64px; font-weight: 500; line-height: 1.05; letter-spacing: 0.02em; word-break: break-all; }
+.hero-hz { margin: 0; font-size: 68px; font-weight: 500; line-height: 1.05; letter-spacing: 0.02em; word-break: break-all; }
 .trad { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; }
 .trad-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .trad-hz { font-size: 20px; color: var(--text-2); }
-.py-row { display: flex; align-items: center; gap: 10px; }
-.hero-py { font-size: 22px; font-weight: 500; color: var(--accent); }
+.py-row { display: flex; align-items: center; gap: 12px; }
+.hero-py { font-size: 24px; font-weight: 500; color: var(--accent); }
 .speak {
-  width: 44px; height: 44px; border: none; border-radius: 22px; background: var(--accent-soft); color: var(--accent-text);
+  width: 40px; height: 40px; border: none; border-radius: 20px; background: var(--accent-soft); color: var(--accent-text);
   display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
 }
 
-.panel { flex: 1; background: var(--surface); border-radius: 24px 24px 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; }
-.tabs { display: flex; padding: 0 24px; border-bottom: 1px solid var(--divider); position: sticky; top: var(--sat); background: var(--surface); border-radius: 24px 24px 0 0; z-index: 2; }
-.tab {
-  flex: 1; height: 48px; border: none; background: transparent; cursor: pointer; font-size: 15px; font-weight: 500;
-  color: var(--muted); border-bottom: 2.5px solid transparent; margin-bottom: -1px;
-}
-.tab.on { font-weight: 600; color: var(--text); border-bottom-color: var(--accent); }
-.panel-body { padding: 24px 24px 32px; display: flex; flex-direction: column; gap: 28px; }
-.panel-body.write { padding-top: 20px; }
+.body { padding: 0 16px; display: flex; flex-direction: column; }
+.tabs { position: sticky; top: calc(var(--sat) + 8px); z-index: 2; box-shadow: 0 0 0 8px var(--bg); }
+.card-pad { padding: 14px 16px; }
+.write { margin-top: 16px; padding: 20px 16px; }
 
-.block { display: flex; flex-direction: column; gap: 12px; }
-.block.tight { gap: 4px; }
 .reading { text-transform: none; letter-spacing: 0; color: var(--accent-text); }
-.meanings { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.meanings li { display: flex; gap: 12px; font-size: 17px; line-height: 1.45; }
+.count { color: var(--muted); font-weight: 500; }
+.meanings { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.meanings li { display: flex; gap: 12px; font-size: 17px; line-height: 1.4; }
 .num {
   width: 24px; height: 24px; flex-shrink: 0; border-radius: 12px; background: var(--chip); color: var(--text-2);
-  font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center;
 }
 .ref { color: var(--text); border-bottom: 1px dashed var(--grid-border); }
 .ref-py { color: var(--accent-text); font-size: 0.9em; }
-.measure { font-size: 15px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.measure { margin-top: 12px; font-size: 15px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
 .measure-label { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--chip); border-radius: 6px; padding: 2px 8px; }
 
 .char-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.char-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; color: var(--text); }
-.char-card:hover { border-color: var(--border-2); }
+.char-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; background: var(--surface); border-radius: 14px; color: var(--text); }
 .char-top { display: flex; align-items: baseline; gap: 8px; }
 .char-hz { font-size: 30px; font-weight: 500; line-height: 1.1; }
 .char-py { font-size: 14px; color: var(--accent-text); font-weight: 500; }
 .char-def { font-size: 14px; color: var(--text-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-.phrase { display: flex; flex-direction: column; gap: 6px; padding: 16px; background: var(--surface-2); border-radius: 14px; color: var(--text); }
+.phrases { display: flex; flex-direction: column; gap: 10px; }
+.phrase { display: flex; flex-direction: column; gap: 6px; padding: 16px; background: var(--surface); border-radius: 14px; color: var(--text); }
 .phrase-hz { font-size: 20px; line-height: 1.4; }
 .phrase-hit { color: var(--accent); font-weight: 700; }
 .phrase-py { font-size: 14px; color: var(--accent-text); }
 .phrase-def { font-size: 15px; color: var(--text-2); line-height: 1.45; }
 
-.compounds-title { margin-bottom: 8px; }
-.count { color: var(--faint); font-weight: 500; }
-.compound { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 0; border-bottom: 1px solid var(--divider); color: var(--text); }
-.compound-hz { min-width: 88px; font-size: 18px; font-weight: 500; }
-.compound-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.compound { min-height: 56px; gap: 12px; }
+.compound-hz { min-width: 84px; font-size: 18px; font-weight: 500; }
 .compound-py { font-size: 13px; color: var(--accent-text); }
 .compound-def { font-size: 14px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.more { margin-top: 8px; height: 44px; border: none; background: none; color: var(--accent-text); font-size: 15px; font-weight: 600; cursor: pointer; }
-.credit { font-size: 12px; color: var(--faint); }
+.more { width: 100%; height: 48px; border: none; background: none; color: var(--accent-text); font-size: 15px; font-weight: 600; cursor: pointer; }
 </style>

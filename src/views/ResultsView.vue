@@ -53,19 +53,19 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
 </script>
 
 <template>
-  <div class="screen">
-    <div class="topbar results-top">
+  <div class="screen with-tabbar">
+    <div class="topbar">
       <div class="topbar-row">
-        <button class="icon-btn" aria-label="Quay lại" @click="router.back()"><AppIcon name="back" /></button>
+        <button class="round-btn" aria-label="Quay lại" @click="router.back()"><AppIcon name="back" :stroke-width="2.2" /></button>
         <form class="search-field quiet" role="search" @submit.prevent="submit">
-          <AppIcon name="search" :size="18" style="color: var(--faint)" />
+          <AppIcon name="search" :size="18" :stroke-width="2.2" />
           <input v-model="text" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Tìm kiếm" />
         </form>
       </div>
-      <div v-if="hasContains" class="tabs" role="tablist">
+      <div v-if="hasContains" class="segmented" role="tablist" aria-label="Loại kết quả">
         <button
           v-for="t in tabs" :key="t.key" role="tab" :aria-selected="tab === t.key"
-          :class="['tab', { on: tab === t.key }]" @click="setTab(t.key)"
+          :class="{ on: tab === t.key }" @click="setTab(t.key)"
         >{{ t.label }} <span class="count">{{ t.count }}</span></button>
       </div>
     </div>
@@ -88,7 +88,7 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
           <div class="card-def">
             <template v-for="(p, i) in parts(it.def)" :key="i"><mark v-if="p.hit" class="hit">{{ p.text }}</mark><template v-else>{{ p.text }}</template></template>
           </div>
-          <AppIcon name="chevron" :size="16" class="card-chev" />
+          <AppIcon name="chevron" :size="14" :stroke-width="2.6" class="card-chev" />
         </a>
       </div>
     </template>
@@ -96,27 +96,14 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
 </template>
 
 <style scoped>
-.results-top { padding-bottom: 0; }
-.results-top:not(:has(.tabs)) { padding-bottom: 12px; }
-.tabs { display: flex; gap: 20px; padding: 0 4px; overflow-x: auto; }
-.tab {
-  height: 40px; padding: 0; border: none; border-bottom: 2.5px solid transparent; background: transparent;
-  font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap;
-}
-.tab.on { border-bottom-color: var(--accent); font-weight: 600; color: var(--text); }
-.count { font-size: 12px; color: var(--faint); font-weight: 500; }
-.summary { padding: 14px 20px 6px; font-size: 13px; color: var(--muted); }
+.summary { padding: 4px 20px 8px; font-size: 13px; color: var(--muted); }
 .summary strong { color: var(--text); }
-.cards { padding: 0 16px 24px; display: flex; flex-direction: column; gap: 10px; }
-.card {
-  display: flex; gap: 14px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; color: var(--text);
-}
-.card:hover { border-color: var(--border-2); }
-.card-head { display: flex; flex-direction: column; gap: 2px; min-width: 64px; max-width: 45%; }
+.cards { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+.card { display: flex; align-items: center; gap: 14px; padding: 14px 14px 14px 16px; background: var(--surface); border-radius: 16px; color: var(--text); }
+.card:hover { background: #FAFAFC; }
+.card-head { display: flex; flex-direction: column; gap: 2px; min-width: 72px; max-width: 45%; }
 .card-hz { font-size: 24px; font-weight: 500; line-height: 1.2; word-break: break-all; }
 .card-py { font-size: 13px; color: var(--accent-text); font-weight: 500; }
-.card-def { flex: 1; min-width: 0; font-size: 15px; line-height: 1.45; color: var(--text-2); padding-top: 3px; }
-.card-chev { align-self: center; color: var(--chevron); flex-shrink: 0; }
-input[type='search']::-webkit-search-cancel-button { display: none; }
+.card-def { flex: 1; min-width: 0; font-size: 15px; line-height: 1.45; color: var(--text-2); }
+.card-chev { color: var(--chevron); flex-shrink: 0; }
 </style>

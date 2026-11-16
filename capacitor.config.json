@@ -3,6 +3,6 @@
   "appName": "CVDict",
   "webDir": "dist",
   "android": {
-    "backgroundColor": "#F6F6F4"
+    "backgroundColor": "#F2F2F7"
   }
 }

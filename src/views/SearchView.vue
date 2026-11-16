@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import HandwritingPad from '../components/HandwritingPad.vue'
 import { dictReady, search } from '../lib/dict.js'
 import { pushHistory } from '../lib/storage.js'
+import { sheetOpen } from '../lib/ui.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +15,7 @@ const items = ref([])
 const total = ref(0)
 const loading = ref(true)
 const error = ref('')
+const padOpen = ref(!!route.query.hw)
 
 dictReady.then(() => { loading.value = false; run() }).catch((e) => { error.value = e.message })
 
@@ -33,7 +36,10 @@ watch(q, () => {
   if (!loading.value) timer = setTimeout(run, 120)
 })
 
-onMounted(() => input.value?.focus())
+watch(padOpen, (v) => { sheetOpen.value = v }, { immediate: true })
+onBeforeUnmount(() => { sheetOpen.value = false })
+
+onMounted(() => { if (!padOpen.value) input.value?.focus() })
 
 function open(item) {
   pushHistory({ type: 'word', s: item.s, py: item.py })
@@ -49,55 +55,70 @@ function submit() {
 
 function clear() {
   q.value = ''
-  input.value?.focus()
+  if (!padOpen.value) input.value?.focus()
+}
+
+function togglePad() {
+  padOpen.value = !padOpen.value
+  if (padOpen.value) input.value?.blur()
+  else input.value?.focus()
 }
 </script>
 
 <template>
-  <div class="screen">
+  <div :class="['screen', padOpen ? 'pad-space' : 'with-tabbar']">
     <div class="topbar">
-      <div class="topbar-row">
-        <RouterLink :to="{ name: 'home' }" class="icon-btn" aria-label="Quay lại"><AppIcon name="back" /></RouterLink>
-        <form class="search-field" role="search" @submit.prevent="submit">
-          <AppIcon name="search" :size="18" style="color: var(--faint)" />
+      <form class="topbar-row" role="search" @submit.prevent="submit">
+        <label class="search-field">
+          <AppIcon name="search" :size="18" :stroke-width="2.2" />
           <input
             ref="input" v-model="q" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off"
-            spellcheck="false" aria-label="Tìm kiếm" placeholder="学习, xuexi, học…"
+            spellcheck="false" aria-label="Tìm kiếm" placeholder="学习, xuexi, học…" @focus="padOpen = false"
           />
           <button v-if="q" type="button" class="clear-btn" aria-label="Xóa nội dung" @click="clear">
-            <AppIcon name="close" :size="14" />
+            <AppIcon name="close" :size="12" :stroke-width="3.2" />
           </button>
-        </form>
-      </div>
+          <button type="button" :class="['field-btn', { on: padOpen }]" aria-label="Viết tay" :aria-pressed="padOpen" @click="togglePad">
+            <AppIcon name="pen" :size="20" :stroke-width="2" />
+          </button>
+        </label>
+        <RouterLink :to="{ name: 'home' }" class="link-btn">Hủy</RouterLink>
+      </form>
     </div>
 
     <div class="list">
       <p v-if="error" class="state">Không tải được từ điển: {{ error }}</p>
       <p v-else-if="loading" class="state">Đang tải từ điển…</p>
       <p v-else-if="q.trim() && !items.length" class="state">Không tìm thấy kết quả cho “{{ q.trim() }}”.</p>
-      <template v-else>
-        <a v-for="it in items" :key="it.id" href="#" class="row-link" @click.prevent="open(it)">
-          <div class="row-hz">{{ it.s }}</div>
-          <div class="row-body">
-            <div class="row-py">{{ it.py }}</div>
-            <div class="row-def">{{ it.def }}</div>
-          </div>
-          <AppIcon name="chevron" :size="16" style="color: var(--chevron)" />
-        </a>
-        <button v-if="items.length" class="see-all" @click="submit">
-          Xem tất cả kết quả cho “{{ q.trim() }}”
-          <AppIcon name="arrow" :size="16" />
-        </button>
+      <template v-else-if="items.length">
+        <h2 class="group-header">Gợi ý</h2>
+        <div class="group">
+          <a v-for="it in items" :key="it.id" href="#" class="row-link" @click.prevent="open(it)">
+            <span class="row-hz">{{ it.s }}</span>
+            <span class="row-body">
+              <span class="row-py">{{ it.py }}</span>
+              <span class="row-def">{{ it.def }}</span>
+            </span>
+          </a>
+          <button class="see-all" @click="submit">
+            <span>Xem tất cả kết quả cho “{{ q.trim() }}”</span>
+            <AppIcon name="arrow" :size="16" :stroke-width="2.2" />
+          </button>
+        </div>
       </template>
     </div>
+
+    <HandwritingPad v-if="padOpen" v-model="q" @close="padOpen = false" />
   </div>
 </template>
 
 <style scoped>
-.list { flex: 1; background: var(--surface); }
+.pad-space { padding-bottom: 460px; }
+.topbar .link-btn { padding: 8px 0; }
+.list { padding: 0 16px; }
+.list .group-header { margin-top: 8px; }
 .see-all {
-  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px;
-  border: none; background: none; font-size: 15px; font-weight: 600; color: var(--accent-text); cursor: pointer;
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 52px; padding: 0 16px;
+  border: none; background: none; font-size: 16px; font-weight: 600; color: var(--accent-text); cursor: pointer;
 }
-input[type='search']::-webkit-search-cancel-button { display: none; }
 </style>
