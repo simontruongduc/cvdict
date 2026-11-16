@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import StrokeOrder from '../components/StrokeOrder.vue'
-import { canFetchAiInfo, getAiInfo, getCachedAiInfo } from '../lib/aiInfo.js'
+import { canFetchAiInfo, getAiInfo, getCachedAiInfo, refreshAiInfo } from '../lib/aiInfo.js'
 import { dictReady, getWord } from '../lib/dict.js'
 import { segments } from '../lib/refs.js'
 import { canSpeak, speak } from '../lib/speech.js'
@@ -17,6 +17,8 @@ const copied = ref(false)
 const showAllCompounds = ref(false)
 const ai = ref(null)
 const aiLoading = ref(false)
+const aiRefreshing = ref(false)
+const aiError = ref('')
 
 const tab = computed(() => (route.query.tab === 'write' ? 'write' : 'meaning'))
 const setTab = (t) => router.replace({ query: { ...route.query, tab: t === 'meaning' ? undefined : t } })
@@ -37,18 +39,39 @@ async function load() {
 }
 
 // Extra Gemini info: cache first; otherwise fetch in the background. Failures just leave it hidden.
+const aiContext = (r) => ({ word: r.s, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
+
 async function loadAi(r) {
   ai.value = null
   aiLoading.value = false
+  aiRefreshing.value = false
+  aiError.value = ''
   const cached = await getCachedAiInfo(r.s)
   if (word.value?.s !== r.s) return
   if (cached) { ai.value = cached; return }
   if (!(await canFetchAiInfo()) || word.value?.s !== r.s) return
   aiLoading.value = true
-  const info = await getAiInfo({ word: r.s, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
+  const info = await getAiInfo(aiContext(r))
   if (word.value?.s !== r.s) return
   ai.value = info
   aiLoading.value = false
+}
+
+// Refresh button: fetch again and overwrite the cache; on failure keep the old info and say so.
+async function refreshAi() {
+  const r = word.value
+  if (!r || aiRefreshing.value) return
+  aiRefreshing.value = true
+  aiError.value = ''
+  try {
+    const info = await refreshAiInfo(aiContext(r))
+    if (word.value?.s === r.s) ai.value = info
+  } catch (e) {
+    console.debug('AI refresh failed', e)
+    if (word.value?.s === r.s) aiError.value = 'Không lấy được dữ liệu mới từ Gemini.'
+  } finally {
+    if (word.value?.s === r.s) aiRefreshing.value = false
+  }
 }
 watch(() => route.params.w, (w) => w && load(), { immediate: true })
 
@@ -162,8 +185,15 @@ function splitOn(text, w) {
             <div class="group card-pad skeleton"><span /><span /><span class="short" /></div>
           </section>
           <section v-else-if="ai">
-            <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
+            <div class="ai-head">
+              <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
+              <button
+                :class="['ai-refresh', { spinning: aiRefreshing }]" :disabled="aiRefreshing"
+                :aria-label="aiRefreshing ? 'Đang làm mới' : 'Làm mới từ Gemini'" @click="refreshAi"
+              ><AppIcon name="refresh" :size="18" /></button>
+            </div>
             <div class="group card-pad ai">
+              <p v-if="aiError" class="ai-error" role="status">{{ aiError }}</p>
               <p v-if="ai.usage" class="ai-usage">{{ ai.usage }}</p>
               <template v-if="ai.examples.length">
                 <h3 class="ai-sub">Câu ví dụ</h3>
@@ -290,6 +320,17 @@ function splitOn(text, w) {
 .compound-def { font-size: 14px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .more { width: 100%; height: 48px; border: none; background: none; color: var(--accent-text); font-size: 15px; font-weight: 600; cursor: pointer; }
 .ai-title { display: flex; align-items: center; gap: 6px; }
+.ai-head { display: flex; align-items: flex-end; justify-content: space-between; }
+.ai-head .group-header { margin-bottom: 8px; }
+.ai-refresh {
+  width: 44px; height: 44px; margin: 0 -6px 0 0; border: none; background: none; color: var(--accent-text);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.ai-refresh:disabled { cursor: default; }
+.ai-refresh.spinning svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ai-refresh.spinning svg { animation: none; } }
+.ai-error { margin: 0; font-size: 14px; color: var(--danger); }
 .ai { display: flex; flex-direction: column; gap: 10px; }
 .ai-usage { margin: 0; font-size: 16px; line-height: 1.5; color: var(--text); }
 .ai-sub { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }

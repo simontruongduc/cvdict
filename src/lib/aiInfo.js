@@ -11,6 +11,9 @@ async function readCache(word) {
   return rows[0] ? JSON.parse(rows[0].data) : null
 }
 
+const writeCache = (word, info) =>
+  run('INSERT OR REPLACE INTO ai_info (word, data, model, created_at) VALUES (?, ?, ?, ?)', [word, JSON.stringify(info), GEMINI_MODEL, Date.now()])
+
 /** Cached info only, never touches the network. */
 export const getCachedAiInfo = (word) => readCache(word).catch(() => null)
 
@@ -31,8 +34,7 @@ export function getAiInfo(ctx) {
       const key = await currentKey()
       if (!key || navigator.onLine === false) return null
       const info = await fetchWordInfo(ctx, key)
-      await run('INSERT OR REPLACE INTO ai_info (word, data, model, created_at) VALUES (?, ?, ?, ?)', [word, JSON.stringify(info), GEMINI_MODEL, Date.now()])
-        .catch((e) => console.debug('AI info cache write failed', e))
+      await writeCache(word, info).catch((e) => console.debug('AI info cache write failed', e))
       return info
     } catch (e) {
       console.debug('AI info unavailable for', word, e)
@@ -43,4 +45,13 @@ export function getAiInfo(ctx) {
   })()
   inflight.set(word, p)
   return p
+}
+
+/** Always calls Gemini and overwrites the cache. Throws on any failure (the cache is left as is). */
+export async function refreshAiInfo(ctx) {
+  const key = await currentKey()
+  if (!key) throw new Error('No Gemini key')
+  const info = await fetchWordInfo(ctx, key)
+  await writeCache(ctx.word, info)
+  return info
 }
