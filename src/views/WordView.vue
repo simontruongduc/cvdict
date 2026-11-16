@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import StrokeOrder from '../components/StrokeOrder.vue'
+import { canFetchAiInfo, getAiInfo, getCachedAiInfo } from '../lib/aiInfo.js'
 import { dictReady, getWord } from '../lib/dict.js'
 import { segments } from '../lib/refs.js'
 import { canSpeak, speak } from '../lib/speech.js'
@@ -14,6 +15,8 @@ const word = ref(null)
 const loading = ref(true)
 const copied = ref(false)
 const showAllCompounds = ref(false)
+const ai = ref(null)
+const aiLoading = ref(false)
 
 const tab = computed(() => (route.query.tab === 'write' ? 'write' : 'meaning'))
 const setTab = (t) => router.replace({ query: { ...route.query, tab: t === 'meaning' ? undefined : t } })
@@ -27,7 +30,25 @@ async function load() {
   if (String(route.params.w) !== w) return
   word.value = r
   loading.value = false
-  if (r) pushHistory({ type: 'word', s: r.s, py: r.entries[0].py })
+  if (r) {
+    pushHistory({ type: 'word', s: r.s, py: r.entries[0].py })
+    loadAi(r)
+  }
+}
+
+// Extra Gemini info: cache first; otherwise fetch in the background. Failures just leave it hidden.
+async function loadAi(r) {
+  ai.value = null
+  aiLoading.value = false
+  const cached = await getCachedAiInfo(r.s)
+  if (word.value?.s !== r.s) return
+  if (cached) { ai.value = cached; return }
+  if (!(await canFetchAiInfo()) || word.value?.s !== r.s) return
+  aiLoading.value = true
+  const info = await getAiInfo({ word: r.s, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
+  if (word.value?.s !== r.s) return
+  ai.value = info
+  aiLoading.value = false
 }
 watch(() => route.params.w, (w) => w && load(), { immediate: true })
 
@@ -136,6 +157,36 @@ function splitOn(text, w) {
             </div>
           </section>
 
+          <section v-if="aiLoading" aria-busy="true" aria-label="Đang tra thêm bằng AI">
+            <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
+            <div class="group card-pad skeleton"><span /><span /><span class="short" /></div>
+          </section>
+          <section v-else-if="ai">
+            <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
+            <div class="group card-pad ai">
+              <p v-if="ai.usage" class="ai-usage">{{ ai.usage }}</p>
+              <template v-if="ai.examples.length">
+                <h3 class="ai-sub">Câu ví dụ</h3>
+                <div v-for="(ex, i) in ai.examples" :key="i" class="ai-example">
+                  <div class="hz ai-zh">{{ ex.zh }}</div>
+                  <div class="ai-py">{{ ex.py }}</div>
+                  <div class="ai-vi">{{ ex.vi }}</div>
+                </div>
+              </template>
+              <template v-for="rel in [{ k: 'synonyms', t: 'Đồng nghĩa' }, { k: 'antonyms', t: 'Trái nghĩa' }]" :key="rel.k">
+                <template v-if="ai[rel.k].length">
+                  <h3 class="ai-sub">{{ rel.t }}</h3>
+                  <div class="ai-chips">
+                    <RouterLink v-for="x in ai[rel.k]" :key="x.zh" :to="goWord(x.zh)" class="ai-chip">
+                      <span class="hz">{{ x.zh }}</span> <span class="ai-chip-py">{{ x.py }}</span>
+                      <span class="ai-chip-vi">{{ x.vi }}</span>
+                    </RouterLink>
+                  </div>
+                </template>
+              </template>
+            </div>
+          </section>
+
           <section v-if="word.chars.length">
             <h2 class="group-header">Từng chữ</h2>
             <div class="char-grid">
@@ -238,4 +289,22 @@ function splitOn(text, w) {
 .compound-py { font-size: 13px; color: var(--accent-text); }
 .compound-def { font-size: 14px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .more { width: 100%; height: 48px; border: none; background: none; color: var(--accent-text); font-size: 15px; font-weight: 600; cursor: pointer; }
+.ai-title { display: flex; align-items: center; gap: 6px; }
+.ai { display: flex; flex-direction: column; gap: 10px; }
+.ai-usage { margin: 0; font-size: 16px; line-height: 1.5; color: var(--text); }
+.ai-sub { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.ai-example { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-top: 0.5px solid var(--divider); }
+.ai-sub + .ai-example { border-top: none; padding-top: 2px; }
+.ai-zh { font-size: 18px; line-height: 1.4; }
+.ai-py { font-size: 14px; color: var(--accent-text); }
+.ai-vi { font-size: 15px; color: var(--text-2); line-height: 1.45; }
+.ai-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-chip { display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; border-radius: 12px; background: var(--chip); color: var(--text); font-size: 16px; }
+.ai-chip-py { font-size: 13px; color: var(--accent-text); }
+.ai-chip-vi { font-size: 13px; color: var(--muted); }
+.skeleton { display: flex; flex-direction: column; gap: 10px; }
+.skeleton span { height: 14px; border-radius: 7px; background: var(--chip); animation: pulse 1.2s ease-in-out infinite; }
+.skeleton .short { width: 60%; }
+@keyframes pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
 </style>
