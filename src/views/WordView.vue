@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import StrokeOrder from '../components/StrokeOrder.vue'
-import { canFetchAiInfo, getAiInfo, getCachedAiInfo, refreshAiInfo } from '../lib/aiInfo.js'
+import { canFetchAiInfo, errorLog, getAiInfo, getCachedAiInfo, refreshAiInfo } from '../lib/aiInfo.js'
 import { dictReady, getWord } from '../lib/dict.js'
 import { segments } from '../lib/refs.js'
 import { canSpeak, speak } from '../lib/speech.js'
@@ -38,7 +38,8 @@ async function load() {
   }
 }
 
-// Extra Gemini info: cache first; otherwise fetch in the background. Failures just leave it hidden.
+// Extra Gemini info: cache first; otherwise fetch in the background. The zone is always shown:
+// empty without data, and a failed call prints its error log there.
 const aiContext = (r) => ({ word: r.s, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
 
 async function loadAi(r) {
@@ -51,13 +52,18 @@ async function loadAi(r) {
   if (cached) { ai.value = cached; return }
   if (!(await canFetchAiInfo()) || word.value?.s !== r.s) return
   aiLoading.value = true
-  const info = await getAiInfo(aiContext(r))
-  if (word.value?.s !== r.s) return
-  ai.value = info
-  aiLoading.value = false
+  try {
+    const info = await getAiInfo(aiContext(r))
+    if (word.value?.s === r.s) ai.value = info
+  } catch (e) {
+    console.debug('AI info failed', e)
+    if (word.value?.s === r.s) aiError.value = errorLog(e)
+  } finally {
+    if (word.value?.s === r.s) aiLoading.value = false
+  }
 }
 
-// Refresh button: fetch again and overwrite the cache; on failure keep the old info and say so.
+// Refresh button: fetch again and overwrite the cache; on failure keep the old info and print the error.
 async function refreshAi() {
   const r = word.value
   if (!r || aiRefreshing.value) return
@@ -68,7 +74,7 @@ async function refreshAi() {
     if (word.value?.s === r.s) ai.value = info
   } catch (e) {
     console.debug('AI refresh failed', e)
-    if (word.value?.s === r.s) aiError.value = `Không lấy được dữ liệu mới từ Gemini${e?.reason ? ` (${e.reason})` : ''}.`
+    if (word.value?.s === r.s) aiError.value = errorLog(e)
   } finally {
     if (word.value?.s === r.s) aiRefreshing.value = false
   }
@@ -180,38 +186,37 @@ function splitOn(text, w) {
             </div>
           </section>
 
-          <section v-if="aiLoading" aria-busy="true" aria-label="Đang tra thêm bằng AI">
-            <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
-            <div class="group card-pad skeleton"><span /><span /><span class="short" /></div>
-          </section>
-          <section v-else-if="ai">
+          <section :aria-busy="aiLoading">
             <div class="ai-head">
               <h2 class="group-header ai-title"><AppIcon name="sparkle" :size="14" /> Bổ sung từ AI</h2>
               <button
-                :class="['ai-refresh', { spinning: aiRefreshing }]" :disabled="aiRefreshing"
-                :aria-label="aiRefreshing ? 'Đang làm mới' : 'Làm mới từ Gemini'" @click="refreshAi"
+                :class="['ai-refresh', { spinning: aiRefreshing || aiLoading }]" :disabled="aiRefreshing || aiLoading"
+                :aria-label="aiRefreshing || aiLoading ? 'Đang tải' : 'Làm mới từ Gemini'" @click="refreshAi"
               ><AppIcon name="refresh" :size="18" /></button>
             </div>
             <div class="group card-pad ai">
-              <p v-if="aiError" class="ai-error" role="status">{{ aiError }}</p>
-              <p v-if="ai.usage" class="ai-usage">{{ ai.usage }}</p>
-              <template v-if="ai.examples.length">
-                <h3 class="ai-sub">Câu ví dụ</h3>
-                <div v-for="(ex, i) in ai.examples" :key="i" class="ai-example">
-                  <div class="hz ai-zh">{{ ex.zh }}</div>
-                  <div class="ai-py">{{ ex.py }}</div>
-                  <div class="ai-vi">{{ ex.vi }}</div>
-                </div>
-              </template>
-              <template v-for="rel in [{ k: 'synonyms', t: 'Đồng nghĩa' }, { k: 'antonyms', t: 'Trái nghĩa' }]" :key="rel.k">
-                <template v-if="ai[rel.k].length">
-                  <h3 class="ai-sub">{{ rel.t }}</h3>
-                  <div class="ai-chips">
-                    <RouterLink v-for="x in ai[rel.k]" :key="x.zh" :to="goWord(x.zh)" class="ai-chip">
-                      <span class="hz">{{ x.zh }}</span> <span class="ai-chip-py">{{ x.py }}</span>
-                      <span class="ai-chip-vi">{{ x.vi }}</span>
-                    </RouterLink>
+              <pre v-if="aiError" class="ai-log" role="status">{{ aiError }}</pre>
+              <div v-if="aiLoading" class="skeleton"><span /><span /><span class="short" /></div>
+              <template v-else-if="ai">
+                <p v-if="ai.usage" class="ai-usage">{{ ai.usage }}</p>
+                <template v-if="ai.examples.length">
+                  <h3 class="ai-sub">Câu ví dụ</h3>
+                  <div v-for="(ex, i) in ai.examples" :key="i" class="ai-example">
+                    <div class="hz ai-zh">{{ ex.zh }}</div>
+                    <div class="ai-py">{{ ex.py }}</div>
+                    <div class="ai-vi">{{ ex.vi }}</div>
                   </div>
+                </template>
+                <template v-for="rel in [{ k: 'synonyms', t: 'Đồng nghĩa' }, { k: 'antonyms', t: 'Trái nghĩa' }]" :key="rel.k">
+                  <template v-if="ai[rel.k].length">
+                    <h3 class="ai-sub">{{ rel.t }}</h3>
+                    <div class="ai-chips">
+                      <RouterLink v-for="x in ai[rel.k]" :key="x.zh" :to="goWord(x.zh)" class="ai-chip">
+                        <span class="hz">{{ x.zh }}</span> <span class="ai-chip-py">{{ x.py }}</span>
+                        <span class="ai-chip-vi">{{ x.vi }}</span>
+                      </RouterLink>
+                    </div>
+                  </template>
                 </template>
               </template>
             </div>
@@ -330,7 +335,11 @@ function splitOn(text, w) {
 .ai-refresh.spinning svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ai-refresh.spinning svg { animation: none; } }
-.ai-error { margin: 0; font-size: 14px; color: var(--danger); }
+.ai-log {
+  margin: 0; padding: 10px 12px; border-radius: 10px; background: #FFF1F0; color: var(--danger);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+  max-height: 240px; overflow: auto; user-select: text; -webkit-user-select: text;
+}
 .ai { display: flex; flex-direction: column; gap: 10px; }
 .ai-usage { margin: 0; font-size: 16px; line-height: 1.5; color: var(--text); }
 .ai-sub { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }

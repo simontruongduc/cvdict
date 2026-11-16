@@ -49,6 +49,7 @@ function open(item) {
   router.push({ name: 'word', params: { w: item.s } })
 }
 
+const hasHan = computed(() => /\p{Script=Han}/u.test(String(route.query.q || '')))
 const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, hit: false }])
 </script>
 
@@ -71,9 +72,19 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
     </div>
 
     <p v-if="loading" class="state">Đang tìm…</p>
-    <p v-else-if="!result || (!result.matchTotal && !result.containsTotal)" class="state">
-      Không tìm thấy kết quả cho “{{ route.query.q }}”.
-    </p>
+    <p v-else-if="!result" class="state" />
+    <template v-else-if="!result.matchTotal && !result.containsTotal">
+      <div class="summary">Không có “<strong>{{ route.query.q }}</strong>” trong từ điển</div>
+      <div class="cards">
+        <RouterLink :to="{ name: 'sentence', query: { q: route.query.q } }" class="card">
+          <div class="kw">
+            <span :class="['kw-text', { hz: hasHan }]">{{ route.query.q }}</span>
+            <span class="kw-sub"><AppIcon name="sparkle" :size="13" /> Dịch và phân tích bằng AI</span>
+          </div>
+          <AppIcon name="chevron" :size="14" :stroke-width="2.6" class="card-chev" />
+        </RouterLink>
+      </div>
+    </template>
     <template v-else>
       <div class="summary">
         Kết quả cho “<strong>{{ route.query.q }}</strong>” · {{ total.toLocaleString('vi-VN') }} mục
@@ -106,4 +117,8 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
 .card-py { font-size: 13px; color: var(--accent-text); font-weight: 500; }
 .card-def { flex: 1; min-width: 0; font-size: 15px; line-height: 1.45; color: var(--text-2); }
 .card-chev { color: var(--chevron); flex-shrink: 0; }
+.kw { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.kw-text { font-size: 18px; font-weight: 500; line-height: 1.4; word-break: break-word; }
+.kw-text.hz { font-size: 21px; }
+.kw-sub { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--accent-text); }
 </style>

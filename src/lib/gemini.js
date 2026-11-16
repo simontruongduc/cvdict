@@ -1,4 +1,5 @@
-// Gemini API call that returns extra study info for a dictionary word as structured JSON.
+// Gemini API calls that return structured JSON: extra study info for a dictionary word,
+// and a translation + breakdown for a free-text sentence.
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 
 export const GEMINI_MODEL = 'gemini-3.5-flash-lite'
@@ -9,7 +10,7 @@ const ITEM = {
   properties: { zh: { type: 'STRING' }, py: { type: 'STRING' }, vi: { type: 'STRING' } },
   required: ['zh', 'py', 'vi'],
 }
-const SCHEMA = {
+const WORD_SCHEMA = {
   type: 'OBJECT',
   properties: {
     usage: { type: 'STRING' },
@@ -20,7 +21,7 @@ const SCHEMA = {
   required: ['usage', 'examples', 'synonyms', 'antonyms'],
 }
 
-function prompt({ word, pinyin, meanings }) {
+function wordPrompt({ word, pinyin, meanings }) {
   return [
     'Bạn là trợ lý từ điển Trung–Việt cho người Việt học tiếng Trung.',
     `Từ: ${word} (${pinyin}). Nghĩa theo từ điển: ${meanings.join('; ')}.`,
@@ -32,10 +33,39 @@ function prompt({ word, pinyin, meanings }) {
   ].join('\n')
 }
 
+const SENTENCE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    chinese: { type: 'STRING' },
+    pinyin: { type: 'STRING' },
+    vietnamese: { type: 'STRING' },
+    words: { type: 'ARRAY', items: ITEM },
+    grammar: {
+      type: 'ARRAY',
+      items: { type: 'OBJECT', properties: { title: { type: 'STRING' }, explain: { type: 'STRING' } }, required: ['title', 'explain'] },
+    },
+  },
+  required: ['chinese', 'pinyin', 'vietnamese', 'words', 'grammar'],
+}
+
+function sentencePrompt(text) {
+  return [
+    'Bạn là trợ lý dịch và phân tích câu Trung–Việt cho người Việt học tiếng Trung.',
+    `Câu người dùng nhập (có thể là tiếng Trung, tiếng Việt hoặc pinyin): ${text}`,
+    'Trả về JSON gồm:',
+    '- chinese: câu tiếng Trung giản thể. Nếu câu nhập là tiếng Trung thì giữ nguyên (đổi sang giản thể nếu cần); nếu là ngôn ngữ khác thì dịch sang tiếng Trung tự nhiên.',
+    '- pinyin: pinyin có dấu thanh của câu chinese.',
+    '- vietnamese: bản dịch tiếng Việt tự nhiên của câu chinese.',
+    '- words: tách câu chinese thành từng từ theo đúng thứ tự (bỏ dấu câu), mỗi từ có zh, py (pinyin có dấu thanh), vi (nghĩa tiếng Việt trong ngữ cảnh câu).',
+    '- grammar: 0–4 điểm ngữ pháp hoặc cấu trúc đáng chú ý trong câu, mỗi điểm có title (cấu trúc, ví dụ "把 + tân ngữ + động từ") và explain (giải thích ngắn gọn bằng tiếng Việt). Câu quá đơn giản thì để mảng rỗng.',
+  ].join('\n')
+}
+
 const isItem = (x) => x && typeof x.zh === 'string' && typeof x.py === 'string' && typeof x.vi === 'string' && x.zh.trim()
 
-// Errors carry a short Vietnamese `reason` the refresh button can show.
-const fail = (reason, cause) => Object.assign(new Error(`Gemini: ${reason}`, { cause }), { reason })
+// Errors carry a short Vietnamese `reason` and, for HTTP errors, the response body as `detail`.
+const fail = (reason, cause, detail) => Object.assign(new Error(`Gemini: ${reason}`, { cause }), { reason, detail })
+const bodyText = (v) => (typeof v === 'string' ? v : JSON.stringify(v, null, 2) || '').slice(0, 2000)
 
 // In the native apps the request goes through the native HTTP stack: WKWebView on iOS
 // enforces CORS for its capacitor:// origin, the native client does not.
@@ -47,7 +77,7 @@ async function post(url, headers, body) {
     } catch (e) {
       throw fail(/timed? ?out/i.test(String(e?.message)) ? 'quá thời gian' : 'lỗi mạng', e)
     }
-    if (res.status < 200 || res.status >= 300) throw fail(`HTTP ${res.status}`)
+    if (res.status < 200 || res.status >= 300) throw fail(`HTTP ${res.status}`, undefined, bodyText(res.data))
     return typeof res.data === 'string' ? JSON.parse(res.data) : res.data
   }
   const ctrl = new AbortController()
@@ -60,32 +90,48 @@ async function post(url, headers, body) {
   } finally {
     clearTimeout(timer)
   }
-  if (!res.ok) throw fail(`HTTP ${res.status}`)
+  if (!res.ok) throw fail(`HTTP ${res.status}`, undefined, bodyText(await res.text().catch(() => '')))
   return res.json()
 }
 
-/** Throws on any failure (network, HTTP, timeout, malformed output). */
-export async function fetchWordInfo(ctx, key) {
+// Sends one prompt and returns the parsed JSON answer.
+async function generate(text, schema, key) {
   const body = await post(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     {
-      contents: [{ role: 'user', parts: [{ text: prompt(ctx) }] }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.4 },
+      contents: [{ role: 'user', parts: [{ text }] }],
+      generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.4 },
     },
   )
-  let data
   try {
-    data = JSON.parse(body?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join(''))
+    return JSON.parse(body?.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join(''))
   } catch (e) {
-    throw fail('phản hồi không hợp lệ', e)
+    throw fail('phản hồi không hợp lệ', e, bodyText(body))
   }
-  const info = {
-    usage: typeof data?.usage === 'string' ? data.usage.trim() : '',
-    examples: (Array.isArray(data?.examples) ? data.examples : []).filter(isItem),
-    synonyms: (Array.isArray(data?.synonyms) ? data.synonyms : []).filter(isItem),
-    antonyms: (Array.isArray(data?.antonyms) ? data.antonyms : []).filter(isItem),
-  }
+}
+
+const str = (v) => (typeof v === 'string' ? v.trim() : '')
+const items = (v) => (Array.isArray(v) ? v : []).filter(isItem)
+
+/** Throws on any failure (network, HTTP, timeout, malformed output). */
+export async function fetchWordInfo(ctx, key) {
+  const data = await generate(wordPrompt(ctx), WORD_SCHEMA, key)
+  const info = { usage: str(data?.usage), examples: items(data?.examples), synonyms: items(data?.synonyms), antonyms: items(data?.antonyms) }
   if (!info.usage && !info.examples.length) throw fail('phản hồi không hợp lệ')
+  return info
+}
+
+/** Translation and word-by-word breakdown of a free-text sentence. Throws on any failure. */
+export async function fetchSentenceInfo(text, key) {
+  const data = await generate(sentencePrompt(text), SENTENCE_SCHEMA, key)
+  const info = {
+    chinese: str(data?.chinese),
+    pinyin: str(data?.pinyin),
+    vietnamese: str(data?.vietnamese),
+    words: items(data?.words),
+    grammar: (Array.isArray(data?.grammar) ? data.grammar : []).filter((g) => str(g?.title) && str(g?.explain)),
+  }
+  if (!info.chinese || !info.vietnamese) throw fail('phản hồi không hợp lệ')
   return info
 }

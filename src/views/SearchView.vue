@@ -89,7 +89,19 @@ function togglePad() {
     <div class="list">
       <p v-if="error" class="state">Không tải được từ điển: {{ error }}</p>
       <p v-else-if="loading" class="state">Đang tải từ điển…</p>
-      <p v-else-if="q.trim() && !items.length" class="state">Không tìm thấy kết quả cho “{{ q.trim() }}”.</p>
+      <template v-else-if="q.trim() && !items.length">
+        <h2 class="group-header">Không có trong từ điển</h2>
+        <div class="group">
+          <RouterLink :to="{ name: 'sentence', query: { q: q.trim() } }" class="row-link" @click="pushHistory({ type: 'query', q: q.trim() })">
+            <AppIcon name="sparkle" :size="18" style="color: var(--accent-text); flex-shrink: 0" />
+            <span class="row-body">
+              <span class="ai-q">{{ q.trim() }}</span>
+              <span class="row-def">Dịch và phân tích bằng AI</span>
+            </span>
+            <AppIcon name="chevron" :size="14" :stroke-width="2.6" style="color: var(--chevron); flex-shrink: 0" />
+          </RouterLink>
+        </div>
+      </template>
       <template v-else-if="items.length">
         <h2 class="group-header">Gợi ý</h2>
         <div class="group">
@@ -113,6 +125,7 @@ function togglePad() {
 </template>
 
 <style scoped>
+.ai-q { font-size: 16px; color: var(--text); line-height: 1.4; word-break: break-word; }
 .pad-space { padding-bottom: 460px; }
 .topbar .link-btn { padding: 8px 0; }
 .list { padding: 0 16px; }

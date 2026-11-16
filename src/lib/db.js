@@ -12,6 +12,7 @@ const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS bookmarks (word TEXT PRIMARY KEY, pinyin TEXT, def TEXT, created_at INTEGER);
    CREATE TABLE IF NOT EXISTS ai_info (word TEXT PRIMARY KEY, data TEXT NOT NULL, model TEXT, created_at INTEGER);
    CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`,
+  `CREATE TABLE IF NOT EXISTS sentence_ai (text TEXT PRIMARY KEY, data TEXT NOT NULL, model TEXT, created_at INTEGER);`,
 ]
 
 async function initWeb() {

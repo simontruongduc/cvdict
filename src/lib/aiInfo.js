@@ -1,6 +1,6 @@
 // Extra word info from Gemini, cached in SQLite. Cached rows are always used first (works offline
-// and without a key); any failure resolves to null so the detail screen just shows local data.
-import { GEMINI_MODEL, fetchWordInfo } from './gemini.js'
+// and without a key).
+import { GEMINI_MODEL, fetchSentenceInfo, fetchWordInfo } from './gemini.js'
 import { query, run } from './db.js'
 import { geminiKey, getSetting } from './settings.js'
 
@@ -23,7 +23,7 @@ const currentKey = async () => geminiKey.value || (await getSetting('gemini_key'
 /** Whether getAiInfo may call Gemini for an uncached word right now. */
 export const canFetchAiInfo = async () => navigator.onLine !== false && !!(await currentKey())
 
-/** ctx: { word, pinyin, meanings } → info | null */
+/** ctx: { word, pinyin, meanings } → info, or null without a key / offline. Rejects when the call fails. */
 export function getAiInfo(ctx) {
   const { word } = ctx
   if (inflight.has(word)) return inflight.get(word)
@@ -36,9 +36,6 @@ export function getAiInfo(ctx) {
       const info = await fetchWordInfo(ctx, key)
       await writeCache(word, info).catch((e) => console.debug('AI info cache write failed', e))
       return info
-    } catch (e) {
-      console.debug('AI info unavailable for', word, e)
-      return null
     } finally {
       inflight.delete(word)
     }
@@ -47,11 +44,44 @@ export function getAiInfo(ctx) {
   return p
 }
 
-/** Always calls Gemini and overwrites the cache. Throws on any failure (the cache is left as is). */
-export async function refreshAiInfo(ctx) {
+/** Multi-line error report shown in the AI zone. */
+export function errorLog(e) {
+  return [
+    new Date().toLocaleTimeString('vi-VN'),
+    e?.reason ? `Lỗi: ${e.reason}` : null,
+    e?.message,
+    e?.cause ? `Nguyên nhân: ${e.cause.message || e.cause}` : null,
+    e?.detail || null,
+  ].filter(Boolean).join('\n')
+}
+
+const requireKey = async () => {
   const key = await currentKey()
   if (!key) throw Object.assign(new Error('No Gemini key'), { reason: 'chưa có Gemini key' })
+  return key
+}
+
+/** Always calls Gemini and overwrites the cache. Throws on any failure (the cache is left as is). */
+export async function refreshAiInfo(ctx) {
+  const key = await requireKey()
   const info = await fetchWordInfo(ctx, key)
   await writeCache(ctx.word, info)
+  return info
+}
+
+// Free-text sentences that are not in the dictionary: translated and broken down by Gemini,
+// cached per exact text. There is no local data to fall back to, so failures are reported.
+export const hasGeminiKey = async () => !!(await currentKey())
+
+export async function getCachedSentenceInfo(text) {
+  const rows = await query('SELECT data FROM sentence_ai WHERE text = ?', [text]).catch(() => [])
+  return rows[0] ? JSON.parse(rows[0].data) : null
+}
+
+/** Always calls Gemini and overwrites the cache. Throws on any failure. */
+export async function fetchSentence(text) {
+  const info = await fetchSentenceInfo(text, await requireKey())
+  await run('INSERT OR REPLACE INTO sentence_ai (text, data, model, created_at) VALUES (?, ?, ?, ?)', [text, JSON.stringify(info), GEMINI_MODEL, Date.now()])
+    .catch((e) => console.debug('Sentence cache write failed', e))
   return info
 }
