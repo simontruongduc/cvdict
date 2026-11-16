@@ -1,0 +1,47 @@
+# Builds an unsigned iOS .ipa. Re-sign it with your Apple ID (e.g. Sideloadly) to install it on a device.
+name: iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, developement]
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+
+      - name: Archive (unsigned)
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package .ipa
+        run: |
+          mkdir -p build/Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app build/Payload/
+          (cd build && zip -qr cibao.ipa Payload)
+          ls -l build/cibao.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibao-ipa
+          path: build/cibao.ipa
+          retention-days: 30
