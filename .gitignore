@@ -3,3 +3,4 @@ dist
 public/data
 public/hanzi
 CVDict-debug.apk
+public/assets/sql-wasm.wasm

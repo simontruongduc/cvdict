@@ -28,3 +28,13 @@ if (!existsSync(hanziOut)) {
   }
   console.log(`stroke data -> ${hanziOut}`)
 }
+
+// sql.js engine used by jeep-sqlite for the web build of @capacitor-community/sqlite. jeep-sqlite bundles the
+// sql.js 1.12 JS glue, so the wasm must come from that exact version (pinned in package.json).
+const sqlWasm = join(root, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm')
+const sqlWasmOut = join(root, 'public', 'assets', 'sql-wasm.wasm')
+if (!existsSync(sqlWasmOut) || statSync(sqlWasmOut).mtimeMs < statSync(sqlWasm).mtimeMs) {
+  mkdirSync(dirname(sqlWasmOut), { recursive: true })
+  cpSync(sqlWasm, sqlWasmOut)
+  console.log(`sql.js wasm -> ${sqlWasmOut}`)
+}
