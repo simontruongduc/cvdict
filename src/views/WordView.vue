@@ -68,7 +68,7 @@ async function refreshAi() {
     if (word.value?.s === r.s) ai.value = info
   } catch (e) {
     console.debug('AI refresh failed', e)
-    if (word.value?.s === r.s) aiError.value = 'Không lấy được dữ liệu mới từ Gemini.'
+    if (word.value?.s === r.s) aiError.value = `Không lấy được dữ liệu mới từ Gemini${e?.reason ? ` (${e.reason})` : ''}.`
   } finally {
     if (word.value?.s === r.s) aiRefreshing.value = false
   }

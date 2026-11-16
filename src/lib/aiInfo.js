@@ -50,7 +50,7 @@ export function getAiInfo(ctx) {
 /** Always calls Gemini and overwrites the cache. Throws on any failure (the cache is left as is). */
 export async function refreshAiInfo(ctx) {
   const key = await currentKey()
-  if (!key) throw new Error('No Gemini key')
+  if (!key) throw Object.assign(new Error('No Gemini key'), { reason: 'chưa có Gemini key' })
   const info = await fetchWordInfo(ctx, key)
   await writeCache(ctx.word, info)
   return info

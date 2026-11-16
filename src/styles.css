@@ -29,7 +29,7 @@
   --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --hz: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   /* Room left under scrolling content for the floating tab bar. */
-  --tabbar-space: calc(var(--sab) + 100px);
+  --tabbar-space: calc(var(--sab) + 80px);
 }
 
 * { box-sizing: border-box; }

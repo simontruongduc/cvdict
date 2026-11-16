@@ -28,7 +28,7 @@ const TABS = [
 
 <style scoped>
 .tabbar {
-  position: fixed; left: 50%; bottom: calc(var(--sab) + 24px); transform: translateX(-50%); z-index: 30;
+  position: fixed; left: 50%; bottom: max(12px, calc(var(--sab) - 10px)); transform: translateX(-50%); z-index: 30;
   display: flex; gap: 4px; padding: 6px; border-radius: 999px;
   background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 0, 0, 0.06); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
