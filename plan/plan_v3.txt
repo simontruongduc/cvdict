@@ -1,0 +1,7 @@
+thêm tính năng thi thử hsk
+- navbar add thêm icon mới trước icon setting ( ios hình cây bút )
+- click vào icon này sẽ show màn hình thi thử hsk,
+ở màn hình này sẽ show các level hsk1, hsk2 ,....
+mỗi level sẽ show thêm thông tin total có bao nhiêu bài test, đã làm bao nhiêu bài,...
+
+- khi chọn level xong sẽ show list bài test của level đó

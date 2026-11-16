@@ -1,0 +1,14 @@
+phần 1 : Update lại UI
+- tạo page wellcome khi lần đầu mở app , hãy design lại 1 page wellcome lấy style từ các page wellcome của apple trên ios
+- tạo page loading khi mở app, khi mở app sẽ show loading page này trước khi vào màn hình chính
+- tạo thanh navbar ở cuối màn hình , follow theo apple liquid glass trên ios của apple ( không cần làm hiệu ứng liquid glass ).
+thanh này gồm 3 mục chỉ hiển thị icon thôi không kèm name :
+1. icon search, khi click vào sẽ trở về màn hình chính
+2. icon bookmark khi click vào sẽ mở ra màn hình mới, ở màn hình này sẽ show list các từ vựng đã được đánh dấu bookmark
+3. icon setting , ở mục này khi click vào sẽ show page config , hiện tại page này có 1 field duy nhất label là gemini key
+cho phép nhập vào gemini api key và btn save.
+- với các UI trước đó hãy chỉnh sữa lại để style trông hiện đại hơn, hãy follow theo design app của apple trên ios để design
+lại UI.
+hãy vẽ mockup giúp tôi trước khi implement.
+https://claude.ai/artifact/5tm4XYq46ACaAVj7Qpxguz?sk=uMSU4M8zlnn5gxqpRKF7jA#page-dcb81aee8d83
+Phần 2 :
