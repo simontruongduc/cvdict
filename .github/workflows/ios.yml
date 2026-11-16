@@ -38,6 +38,7 @@ jobs:
           mkdir -p build/Payload
           cp -R build/App.xcarchive/Products/Applications/App.app build/Payload/
           (cd build && zip -qr cibao.ipa Payload)
+          unzip -l build/cibao.ipa | grep -q "App.app/en.lproj/InfoPlist.strings"
           ls -l build/cibao.ipa
 
       - uses: actions/upload-artifact@v4
