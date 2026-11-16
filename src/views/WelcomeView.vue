@@ -4,6 +4,7 @@ import AppIcon from '../components/AppIcon.vue'
 import { setSetting } from '../lib/settings.js'
 
 const router = useRouter()
+const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 
 const FEATURES = [
   { icon: 'search', title: 'Tra Trung ⇄ Việt', text: 'Gõ chữ Hán, pinyin hoặc tiếng Việt. Gợi ý hiện ngay khi bạn gõ.' },
@@ -20,8 +21,8 @@ function done() {
 <template>
   <div class="screen welcome">
     <div class="head">
-      <div class="logo hz" aria-hidden="true">辞</div>
-      <h1>Chào mừng đến<br>với CVDict</h1>
+      <img class="logo" :src="logoUrl" alt="" />
+      <h1>Chào mừng đến<br>với <span class="hz">词包</span></h1>
     </div>
 
     <ul class="features">
@@ -42,10 +43,7 @@ function done() {
 <style scoped>
 .welcome { background: #fff; padding: 72px 32px 40px; }
 .head { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-.logo {
-  width: 88px; height: 88px; border-radius: 22px; background: var(--accent); color: #fff; font-size: 48px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 24px rgba(194, 39, 45, 0.28);
-}
+.logo { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 10px 24px rgba(240, 186, 54, 0.35); }
 h1 { margin: 0; font-size: 34px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-align: center; }
 .features { list-style: none; margin: 48px 0 0; padding: 0 4px; display: flex; flex-direction: column; gap: 30px; }
 .features li { display: flex; gap: 18px; align-items: flex-start; }

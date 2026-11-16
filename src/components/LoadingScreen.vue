@@ -1,12 +1,13 @@
 <script setup>
 defineProps({ error: { type: String, default: '' } })
+const logoUrl = `${import.meta.env.BASE_URL}logo.png`
 </script>
 
 <template>
   <div class="loading">
     <div class="center">
-      <div class="logo hz">辞</div>
-      <div class="name">CVDict</div>
+      <img class="logo" :src="logoUrl" alt="" />
+      <div class="name hz">词包</div>
       <div class="tagline">Từ điển Trung ⇄ Việt</div>
     </div>
     <div class="status" role="status">
@@ -36,10 +37,7 @@ defineProps({ error: { type: String, default: '' } })
   padding: var(--sat) 32px calc(var(--sab) + 64px);
 }
 .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
-.logo {
-  width: 112px; height: 112px; border-radius: 28px; background: var(--accent); color: #fff; font-size: 62px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 14px 32px rgba(194, 39, 45, 0.28);
-}
+.logo { width: 112px; height: 112px; border-radius: 25px; box-shadow: 0 14px 32px rgba(240, 186, 54, 0.35); }
 .name { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
 .tagline { font-size: 15px; color: var(--muted); }
 .status { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); text-align: center; }
