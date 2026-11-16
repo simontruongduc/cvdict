@@ -1,0 +1,5 @@
+node_modules
+dist
+public/data
+public/hanzi
+CVDict-debug.apk

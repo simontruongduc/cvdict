@@ -1,0 +1,98 @@
+:root {
+  --bg: #F6F6F4;
+  --surface: #FFFFFF;
+  --surface-2: #F8F8F6;
+  --chip: #F1F1EE;
+  --text: #17171A;
+  --text-2: #3A3B40;
+  --muted: #5F6068;
+  --faint: #6B6C73;
+  --chevron: #9A9BA1;
+  --border: #E4E4E0;
+  --border-2: #DADAD5;
+  --divider: #EFEFEC;
+  --accent: #C2272D;
+  --accent-text: #A51F25;
+  --accent-soft: #FBEAEA;
+  --radical: #1F5FBF;
+  --radical-soft: #EAF1FB;
+  --stroke-todo: #E6E6E2;
+  --grid-line: #E8CFD0;
+  --grid-border: #D9B8B9;
+  --grid-bg: #FFFDFC;
+  --font: Inter, 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Capacitor 8 injects --safe-area-inset-*; browsers fall back to env(). */
+  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --hz: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #ECECE8; color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent-text); text-decoration: none; }
+button { font: inherit; color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  max-width: 520px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+}
+.screen { flex: 1; display: flex; flex-direction: column; min-height: calc(100dvh - var(--sat) - var(--sab)); }
+.hz { font-family: var(--hz); }
+
+.icon-btn {
+  width: 44px; height: 44px; border: none; background: transparent; border-radius: 22px;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; flex-shrink: 0;
+}
+.icon-btn:hover { background: rgba(23, 23, 26, 0.05); }
+
+.section-title {
+  margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+
+/* Search bar used on Search and Results screens */
+.topbar {
+  position: sticky; top: var(--sat); z-index: 5;
+  padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.topbar-row { display: flex; align-items: center; gap: 8px; }
+.search-field {
+  flex: 1; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px;
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; min-width: 0;
+}
+.search-field.quiet { background: var(--chip); border-color: transparent; }
+.search-field input {
+  flex: 1; min-width: 0; border: none; outline: none; font: 500 17px var(--font); color: var(--text); background: transparent;
+}
+.search-field input:focus-visible { outline: none; }
+.clear-btn {
+  width: 32px; height: 32px; border: none; border-radius: 16px; background: #EAEAE6; color: var(--text-2);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+}
+
+.state { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* Rows */
+.row-link {
+  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 8px 20px;
+  border-bottom: 1px solid var(--divider); color: var(--text); background: var(--surface);
+}
+.row-link:hover { background: #FBFBF9; }
+.row-hz { min-width: 64px; font-family: var(--hz); font-size: 22px; font-weight: 500; }
+.row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-py { font-size: 14px; color: var(--accent-text); font-weight: 500; }
+.row-def { font-size: 15px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+mark.hit { font-weight: 700; color: var(--text); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; }
+
+/* Opaque strip behind the Android status bar so scrolled content doesn't show through it. */
+.app::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: var(--sat); background: var(--bg); z-index: 20;
+}

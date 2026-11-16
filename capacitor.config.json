@@ -1,0 +1,8 @@
+{
+  "appId": "vn.cvdict.app",
+  "appName": "CVDict",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#F6F6F4"
+  }
+}

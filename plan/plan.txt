@@ -1,0 +1,9 @@
+tôi muốn vibe 1 app từ điển Trung-Việt, Việt-Trung, src dùng file CVDICT.u8
+- công nghệ : create native ( web , android ) ử dụng vuejs
+- chức năng : tra cứu trung việt , việt trung
+các màn hình :
+- home : chứa khung search, input sẽ search ngay và show ra list gợi ý , sau khi chọn 1 option thì mở màn hình detail nếu không
+chọn sẽ show list option map với key work
+- màn hình detail : show từ vựng , nghĩa , câu gợi ý ,....
+
+hãy vẽ mockup image của các màn hình giúp tôi để tôi check trước khi implement
