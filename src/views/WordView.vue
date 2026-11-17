@@ -113,6 +113,7 @@ async function copy() {
 }
 
 const goWord = (w) => wordRoute(w, word.value?.script)
+const altLabel = computed(() => (word.value?.script === 'trad' ? 'Giản thể' : 'Phồn thể'))
 
 /** Highlights the headword inside an example phrase. */
 function splitOn(text, w) {
@@ -145,10 +146,13 @@ function splitOn(text, w) {
       <section class="hero">
         <div class="hero-row">
           <h1 class="hz hero-hz">{{ word.hz }}</h1>
-          <div v-if="word.alt !== word.hz" class="trad">
-            <span class="trad-label">{{ word.script === 'trad' ? 'Giản thể' : 'Phồn thể' }}</span>
-            <span class="hz trad-hz">{{ word.alt }}</span>
-          </div>
+          <RouterLink
+            v-if="word.alt !== word.hz" :to="wordRoute(word.alt, word.script === 'trad' ? 'simp' : 'trad')" class="trad"
+            :aria-label="`Xem dạng ${altLabel.toLowerCase()} ${word.alt}`"
+          >
+            <span class="trad-label">{{ altLabel }}</span>
+            <span class="trad-row"><span class="hz trad-hz">{{ word.alt }}</span><AppIcon name="chevron" :size="13" :stroke-width="2.6" /></span>
+          </RouterLink>
         </div>
         <div class="py-row">
           <span class="hero-py">{{ readings.join(' · ') }}</span>
@@ -282,7 +286,9 @@ function splitOn(text, w) {
 .hero { padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 8px; }
 .hero-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
 .hero-hz { margin: 0; font-size: 68px; font-weight: 500; line-height: 1.05; letter-spacing: 0.02em; word-break: break-all; }
-.trad { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; }
+.trad { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px 8px; margin: 0 -10px 2px; border-radius: 12px; color: inherit; }
+.trad:hover { background: rgba(0, 0, 0, 0.04); }
+.trad-row { display: flex; align-items: center; gap: 4px; color: var(--chevron); }
 .trad-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .trad-hz { font-size: 20px; color: var(--text-2); }
 .py-row { display: flex; align-items: center; gap: 12px; }
