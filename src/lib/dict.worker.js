@@ -206,11 +206,11 @@ function brief(i, script = 'simp') {
   return { id: i, s: simp[i], t: trad[i], hz: form(i, script), py: toMarks(py[i]), def: parts.slice(0, 4).join('; ') }
 }
 
-// Results follow the script of a Chinese query; pinyin and Vietnamese queries show simplified.
-function search(raw, mode) {
+// Results follow the script of a Chinese query; pinyin and Vietnamese queries use `fallback`.
+function search(raw, mode, fallback = 'simp') {
   const kind = detectKind(raw)
   if (kind === 'empty') return { kind, match: [], contains: [] }
-  const script = kind === 'hanzi' ? scriptOf(raw) : 'simp'
+  const script = kind === 'hanzi' ? scriptOf(raw) : fallback
   const show = (i) => brief(i, script)
   let r
   if (kind === 'hanzi') r = searchHanzi(raw.trim().replace(/\s+/g, ''))
@@ -300,7 +300,7 @@ self.onmessage = async (e) => {
     if (type === 'init') result = await (ready ||= load(payload.url))
     else {
       await ready
-      if (type === 'search') result = search(payload.q, payload.mode)
+      if (type === 'search') result = search(payload.q, payload.mode, payload.script)
       else if (type === 'word') result = word(payload.w, payload.script)
     }
     self.postMessage({ id, result })

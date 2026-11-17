@@ -168,17 +168,5 @@ textarea::placeholder { color: var(--chevron); }
 .skeleton .short { width: 55%; }
 @keyframes pulse { 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
-.switch-row { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; min-height: 52px; }
-.switch-row label { font-size: 17px; }
-.switch {
-  appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0; width: 51px; height: 31px; margin: 0;
-  border-radius: 999px; background: #E9E9EA; cursor: pointer; transition: background-color 0.2s;
-}
-.switch::after {
-  content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16); transition: transform 0.2s;
-}
-.switch:checked { background: #34C759; }
-.switch:checked::after { transform: translateX(20px); }
-.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch-row { margin-top: 20px; }
 </style>

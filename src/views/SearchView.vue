@@ -5,6 +5,7 @@ import AppIcon from '../components/AppIcon.vue'
 import HandwritingPad from '../components/HandwritingPad.vue'
 import { dictReady, search } from '../lib/dict.js'
 import { wordRoute } from '../router.js'
+import { searchTrad } from '../lib/settings.js'
 import { pushHistory } from '../lib/storage.js'
 import { sheetOpen } from '../lib/ui.js'
 
@@ -27,7 +28,7 @@ async function run() {
   router.replace({ query: text ? { q: q.value } : {} })
   if (!text) { items.value = []; total.value = 0; return }
   const mine = ++seq
-  const r = await search(text, 'suggest')
+  const r = await search(text, 'suggest', searchTrad.value ? 'trad' : 'simp')
   if (mine !== seq) return
   items.value = r.match
   script.value = r.script || 'simp'

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { dictReady, search } from '../lib/dict.js'
 import { highlight } from '../lib/highlight.js'
+import { searchTrad } from '../lib/settings.js'
 import { pushHistory } from '../lib/storage.js'
 import { wordRoute } from '../router.js'
 
@@ -20,7 +21,7 @@ async function load() {
   if (!q) { result.value = null; loading.value = false; return }
   loading.value = true
   await dictReady
-  result.value = await search(q, 'full')
+  result.value = await search(q, 'full', searchTrad.value ? 'trad' : 'simp')
   loading.value = false
 }
 watch(() => route.query.q, load, { immediate: true })

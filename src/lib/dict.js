@@ -23,7 +23,8 @@ function call(type, payload) {
 
 export const dictReady = call('init', { url: new URL(`${import.meta.env.BASE_URL}data/cvdict.u8`, location.href).href })
 
-/** mode: 'suggest' (top hits, one list) or 'full' (match + contains lists). */
-export const search = (q, mode = 'suggest') => call('search', { q, mode })
+/** mode: 'suggest' (top hits, one list) or 'full' (match + contains lists).
+ * script: how to show results of a Vietnamese / pinyin query; Chinese queries follow their own script. */
+export const search = (q, mode = 'suggest', script = 'simp') => call('search', { q, mode, script })
 /** script: 'trad' | 'simp' to force how the word is shown; by default it follows the script of `w`. */
 export const getWord = (w, script) => call('word', { w, script })

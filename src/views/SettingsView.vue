@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
-import { geminiKey, saveGeminiKey } from '../lib/settings.js'
+import { geminiKey, saveGeminiKey, saveSearchTrad, searchTrad } from '../lib/settings.js'
 
 const key = ref(geminiKey.value)
 const show = ref(false)
@@ -11,6 +11,10 @@ const showLicenses = ref(false)
 // The stored key may finish loading from SQLite after this screen opens.
 watch(geminiKey, (v) => { if (!key.value) key.value = v })
 watch(key, () => { status.value = '' })
+
+function toggleTrad(e) {
+  saveSearchTrad(e.target.checked).catch((err) => console.warn('Saving search setting failed', err))
+}
 
 async function save() {
   try {
@@ -26,6 +30,13 @@ async function save() {
 <template>
   <div class="screen with-tabbar settings">
     <h1 class="large-title">Cài đặt</h1>
+
+    <h2 class="group-header">Tra cứu</h2>
+    <div class="group switch-row">
+      <label for="search-trad">Kết quả hiện chữ phồn thể</label>
+      <input id="search-trad" :checked="searchTrad" type="checkbox" role="switch" class="switch" @change="toggleTrad" />
+    </div>
+    <p class="group-footer">Khi bật, tra bằng tiếng Việt hoặc pinyin sẽ hiện kết quả bằng chữ phồn thể. Tra bằng chữ Hán vẫn hiện đúng kiểu chữ bạn nhập.</p>
 
     <form @submit.prevent="save">
       <h2 class="group-header">Gemini AI</h2>
