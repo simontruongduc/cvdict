@@ -144,3 +144,12 @@ mark.hit { font-weight: 700; color: var(--text); background: var(--accent-soft);
 .app::before {
   content: ''; position: fixed; top: 0; left: 0; right: 0; height: var(--sat); background: var(--bg); z-index: 20;
 }
+
+/* Swipe-to-reveal rows (src/lib/swipe.js) and edit-mode delete buttons. */
+.swipe { position: relative; overflow: hidden; }
+.swipe .row-link { cursor: pointer; touch-action: pan-y; user-select: none; }
+.swipe-action {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 88px; border: none; background: var(--danger); color: #fff;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.minus { border: none; background: none; padding: 0; display: flex; cursor: pointer; margin-right: -2px; }

@@ -3,11 +3,11 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { saved, toggleSaved } from '../lib/storage.js'
+import { useSwipeRows } from '../lib/swipe.js'
 
 const router = useRouter()
 const filter = ref('')
 const editing = ref(false)
-const ACTION_W = 88
 
 const fold = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
 const items = computed(() => {
@@ -16,39 +16,10 @@ const items = computed(() => {
   return saved.value.filter((w) => w.s.includes(filter.value.trim()) || fold(w.py).replace(/\s/g, '').includes(f.replace(/\s/g, '')) || fold(w.def).includes(f))
 })
 
-// Swipe-left-to-reveal "Bỏ lưu", one row open at a time.
-const openKey = ref(null)
-const drag = ref(null) // { key, x0, y0, dx, moved, horiz }
+const { openKey, offset, rowStyle, onDown, onMove, onUp, swallowClick } = useSwipeRows(() => editing.value)
 
-function offset(key) {
-  if (drag.value?.key === key && drag.value.horiz) return drag.value.dx
-  return openKey.value === key ? -ACTION_W : 0
-}
-
-function onDown(e, key) {
-  if (editing.value) return
-  drag.value = { key, x0: e.clientX, y0: e.clientY, base: offset(key), dx: offset(key), moved: false, horiz: false }
-}
-function onMove(e) {
-  const d = drag.value
-  if (!d) return
-  const mx = e.clientX - d.x0, my = e.clientY - d.y0
-  if (!d.moved && Math.hypot(mx, my) > 8) {
-    d.moved = true
-    d.horiz = Math.abs(mx) > Math.abs(my)
-    if (d.horiz) e.currentTarget.setPointerCapture?.(e.pointerId)
-  }
-  if (d.horiz) d.dx = Math.max(-ACTION_W * 1.3, Math.min(0, d.base + mx))
-}
-function onUp() {
-  const d = drag.value
-  if (!d) return
-  if (d.horiz) openKey.value = d.dx < -ACTION_W / 2 ? d.key : null
-  drag.value = null
-}
 function onClick(w) {
-  if (drag.value?.moved) return
-  if (openKey.value) { openKey.value = null; return }
+  if (swallowClick()) return
   if (!editing.value) router.push({ name: 'word', params: { w: w.s } })
 }
 
@@ -78,10 +49,10 @@ function remove(w) {
     <template v-else>
       <div class="group list">
         <div v-for="w in items" :key="w.s" class="swipe">
-          <button v-if="offset(w.s) < 0" class="unsave" tabindex="-1" @click="remove(w)">Bỏ lưu</button>
+          <button v-if="offset(w.s) < 0" class="swipe-action" tabindex="-1" @click="remove(w)">Bỏ lưu</button>
           <div
             class="row-link" role="link" tabindex="0"
-            :style="{ transform: `translateX(${offset(w.s)}px)`, transition: drag?.key === w.s ? 'none' : 'transform 0.2s' }"
+            :style="rowStyle(w.s)"
             @pointerdown="onDown($event, w.s)" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp"
             @click="onClick(w)" @keydown.enter="onClick(w)"
           >
@@ -109,11 +80,4 @@ function remove(w) {
 .count { font-size: 15px; color: var(--muted); }
 .filter { flex: none; margin-top: 12px; height: 40px; }
 .list { margin-top: 20px; }
-.swipe { position: relative; overflow: hidden; }
-.swipe .row-link { cursor: pointer; touch-action: pan-y; user-select: none; }
-.unsave {
-  position: absolute; top: 0; right: 0; bottom: 0; width: 88px; border: none; background: var(--danger); color: #fff;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-}
-.minus { border: none; background: none; padding: 0; display: flex; cursor: pointer; margin-right: -2px; }
 </style>

@@ -24,6 +24,7 @@ export function pushHistory(item) {
   history.value = [item, ...history.value.filter((h) => !sameItem(h, item))].slice(0, 50)
 }
 
+export const removeHistory = (item) => { history.value = history.value.filter((h) => !sameItem(h, item)) }
 export const clearHistory = () => { history.value = [] }
 
 /** Bookmarks: { s, py, def } — newest first. */
