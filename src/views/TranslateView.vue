@@ -1,17 +1,28 @@
+<script>
+import { ref as moduleRef } from 'vue'
+
+// Kept outside the component so the text and its translation survive leaving the tab
+// (e.g. opening the detail screen and coming back), like Apple Translate.
+const text = moduleRef('')
+const result = moduleRef(null) // { source, text, pinyin }
+</script>
+
 <script setup>
 // Quick Vietnamese ⇄ Chinese translation with Gemini, laid out like Apple Translate: one card with
 // the source text on top and the translation below. Gemini detects the language: Chinese goes to
 // Vietnamese, anything else to Chinese. The "phồn thể" switch makes Chinese output traditional.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { errorLog, hasGeminiKey, translate } from '../lib/aiInfo.js'
+import { dictReady, getWord } from '../lib/dict.js'
+import { wordRoute } from '../router.js'
 import { getSetting, setSetting } from '../lib/settings.js'
 import { canSpeak, speak } from '../lib/speech.js'
 
 const DEBOUNCE_MS = 700
+const router = useRouter()
 const traditional = ref(false)
-const text = ref('')
-const result = ref(null) // { text, pinyin }
 const loading = ref(false)
 const error = ref('')
 const noKey = ref(false)
@@ -25,6 +36,7 @@ const to = computed(() => (from.value === 'vi' ? 'zh' : 'vi'))
 const voice = (lang) => (lang === 'vi' ? 'vi-VN' : lang === to.value && traditional.value ? 'zh-TW' : 'zh-CN')
 
 onMounted(async () => {
+  autosize()
   traditional.value = (await getSetting('translate_trad').catch(() => null)) === '1'
 })
 
@@ -79,6 +91,16 @@ async function copy() {
   } catch {}
 }
 
+// Chinese translation → a dictionary word opens the word screen; anything longer opens the sentence
+// screen (word-by-word breakdown and grammar).
+async function openDetail() {
+  const zh = result.value.text
+  const bare = zh.replace(/[\s。，、！？；：.,!?;:]+$/u, '')
+  await dictReady
+  const w = await getWord(bare).catch(() => null)
+  router.push(w ? wordRoute(bare, traditional.value ? 'trad' : undefined) : { name: 'sentence', query: { q: zh } })
+}
+
 function autosize() {
   nextTick(() => {
     const el = input.value
@@ -122,6 +144,7 @@ function autosize() {
             <span class="spacer" />
             <button v-if="canSpeak" class="icon-btn" aria-label="Phát âm bản dịch" @click="speak(result.text, voice(to))"><AppIcon name="sound" :size="20" /></button>
             <button class="icon-btn" :aria-label="copied ? 'Đã sao chép' : 'Sao chép bản dịch'" @click="copy"><AppIcon :name="copied ? 'check' : 'copy'" :size="20" /></button>
+            <button v-if="to === 'zh'" class="icon-btn" aria-label="Xem chi tiết và phân tích ngữ pháp" @click="openDetail"><AppIcon name="analyze" :size="20" /></button>
           </div>
         </template>
       </section>

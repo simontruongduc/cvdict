@@ -56,10 +56,10 @@ function sentencePrompt(text) {
     'Bạn là trợ lý dịch và phân tích câu Trung–Việt cho người Việt học tiếng Trung.',
     `Câu người dùng nhập (có thể là tiếng Trung, tiếng Việt hoặc pinyin): ${text}`,
     'Trả về JSON gồm:',
-    '- chinese: câu tiếng Trung giản thể. Nếu câu nhập là tiếng Trung thì giữ nguyên (đổi sang giản thể nếu cần); nếu là ngôn ngữ khác thì dịch sang tiếng Trung tự nhiên.',
+    '- chinese: câu tiếng Trung. Nếu câu nhập là tiếng Trung thì giữ nguyên, kể cả dạng chữ (giản thể hay phồn thể); nếu là ngôn ngữ khác thì dịch sang tiếng Trung giản thể tự nhiên.',
     '- pinyin: pinyin có dấu thanh của câu chinese.',
     '- vietnamese: bản dịch tiếng Việt tự nhiên của câu chinese.',
-    '- words: tách câu chinese thành từng từ theo đúng thứ tự (bỏ dấu câu), mỗi từ có zh, py (pinyin có dấu thanh), vi (nghĩa tiếng Việt trong ngữ cảnh câu).',
+    '- words: tách câu chinese thành từng từ theo đúng thứ tự (bỏ dấu câu), mỗi từ có zh (cùng dạng chữ với câu chinese), py (pinyin có dấu thanh), vi (nghĩa tiếng Việt trong ngữ cảnh câu).',
     '- grammar: 0–4 điểm ngữ pháp hoặc cấu trúc đáng chú ý trong câu, mỗi điểm có title (cấu trúc, ví dụ "把 + tân ngữ + động từ") và explain (giải thích ngắn gọn bằng tiếng Việt). Câu quá đơn giản thì để mảng rỗng.',
   ].join('\n')
 }
