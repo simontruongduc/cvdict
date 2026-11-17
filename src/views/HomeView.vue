@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import { clearHistory, history, removeHistory } from '../lib/storage.js'
 import { useSwipeRows } from '../lib/swipe.js'
+import { wordRoute } from '../router.js'
 
 const router = useRouter()
 const editing = ref(false)
@@ -11,7 +12,7 @@ const { openKey, offset, rowStyle, onDown, onMove, onUp, swallowClick } = useSwi
 
 const recent = () => history.value.slice(0, 12)
 const keyOf = (h) => h.type + ':' + (h.s || h.q)
-const target = (h) => (h.type === 'word' ? { name: 'word', params: { w: h.s } } : { name: 'results', query: { q: h.q } })
+const target = (h) => (h.type === 'word' ? wordRoute(h.s, h.zh) : { name: 'results', query: { q: h.q } })
 
 function open(h) {
   if (swallowClick() || editing.value) return

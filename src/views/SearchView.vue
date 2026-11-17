@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HandwritingPad from '../components/HandwritingPad.vue'
 import { dictReady, search } from '../lib/dict.js'
+import { wordRoute } from '../router.js'
 import { pushHistory } from '../lib/storage.js'
 import { sheetOpen } from '../lib/ui.js'
 
@@ -13,6 +14,7 @@ const input = ref(null)
 const q = ref(route.query.q || '')
 const items = ref([])
 const total = ref(0)
+const script = ref('simp')
 const loading = ref(true)
 const error = ref('')
 const padOpen = ref(!!route.query.hw)
@@ -28,6 +30,7 @@ async function run() {
   const r = await search(text, 'suggest')
   if (mine !== seq) return
   items.value = r.match
+  script.value = r.script || 'simp'
   total.value = r.total
 }
 
@@ -42,8 +45,8 @@ onBeforeUnmount(() => { sheetOpen.value = false })
 onMounted(() => { if (!padOpen.value) input.value?.focus() })
 
 function open(item) {
-  pushHistory({ type: 'word', s: item.s, py: item.py })
-  router.push({ name: 'word', params: { w: item.s } })
+  pushHistory({ type: 'word', s: item.hz, py: item.py, zh: script.value })
+  router.push(wordRoute(item.hz, script.value))
 }
 
 function submit() {
@@ -106,7 +109,7 @@ function togglePad() {
         <h2 class="group-header">Gợi ý</h2>
         <div class="group">
           <a v-for="it in items" :key="it.id" href="#" class="row-link" @click.prevent="open(it)">
-            <span class="row-hz">{{ it.s }}</span>
+            <span class="row-hz">{{ it.hz }}</span>
             <span class="row-body">
               <span class="row-py">{{ it.py }}</span>
               <span class="row-def">{{ it.def }}</span>

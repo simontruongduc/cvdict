@@ -5,6 +5,7 @@ import AppIcon from '../components/AppIcon.vue'
 import { dictReady, search } from '../lib/dict.js'
 import { highlight } from '../lib/highlight.js'
 import { pushHistory } from '../lib/storage.js'
+import { wordRoute } from '../router.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,8 +46,8 @@ function submit() {
 }
 
 function open(item) {
-  pushHistory({ type: 'word', s: item.s, py: item.py })
-  router.push({ name: 'word', params: { w: item.s } })
+  pushHistory({ type: 'word', s: item.hz, py: item.py, zh: result.value.script })
+  router.push(wordRoute(item.hz, result.value.script))
 }
 
 const hasHan = computed(() => /\p{Script=Han}/u.test(String(route.query.q || '')))
@@ -93,7 +94,7 @@ const parts = (def) => (isVi.value ? highlight(def, text.value) : [{ text: def, 
       <div class="cards">
         <a v-for="it in list" :key="it.id" href="#" class="card" @click.prevent="open(it)">
           <div class="card-head">
-            <span class="hz card-hz">{{ it.s }}</span>
+            <span class="hz card-hz">{{ it.hz }}</span>
             <span class="card-py">{{ it.py }}</span>
           </div>
           <div class="card-def">

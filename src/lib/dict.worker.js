@@ -13,6 +13,7 @@ const RESULT_LIMIT = 300
 let trad, simp, py, defs, senses, pyKey, pyToneKey, defLower, defFold, score
 let byPinyin, bySimp, byTrad
 let syllables, syllablePrefixes
+let tradOnly // characters that only ever appear in traditional headwords
 let ready
 
 const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')
@@ -43,6 +44,11 @@ async function load(url) {
     }
     for (const c of simp[i]) charFreq.set(c, (charFreq.get(c) || 0) + 1)
   }
+  const simpChars = new Set()
+  for (const w of simp) for (const c of w) simpChars.add(c)
+  tradOnly = new Set()
+  for (const w of trad) for (const c of w) if (!simpChars.has(c)) tradOnly.add(c)
+
   syllablePrefixes = new Set()
   for (const s of syllables) for (let j = 1; j <= s.length; j++) syllablePrefixes.add(s.slice(0, j))
 
@@ -109,6 +115,10 @@ export function detectKind(raw) {
   if (/^[a-zA-Z\s'ü:]+[1-5]?(\s*[a-zA-Z'ü:]+[1-5]?)*$/.test(q) && isPinyin(pinyinKey(q))) return 'pinyin'
   return 'vi'
 }
+
+/** 'trad' when the text uses a traditional-only character, else 'simp'. */
+const scriptOf = (text) => ([...text].some((c) => tradOnly.has(c)) ? 'trad' : 'simp')
+const form = (i, script) => (script === 'trad' ? trad[i] : simp[i])
 
 const byRank = (a, b) => score[b] - score[a] || simp[a].length - simp[b].length || a - b
 
@@ -184,20 +194,24 @@ function searchVietnamese(raw) {
   return { match: exact, contains }
 }
 
-/** Replaces "學分制|学分制[xue2 fen1 zhi4]" refs with just the simplified form, for list previews. */
-const plainRefs = (s) => s.replace(REF, (_, a, b) => b || a)
+/** Replaces "學分制|学分制[xue2 fen1 zhi4]" refs with just the form in the given script, for list previews. */
+const plainRefs = (s, script) => s.replace(REF, (_, a, b) => (script === 'trad' ? a : b || a))
 
-function brief(i) {
+/** List item. `hz` is the headword in the script being shown; `s` (simplified) stays the key. */
+function brief(i, script = 'simp') {
   const parts = defs[i]
     .split('/')
     .filter((p) => !/^(LT|Lượng từ)\s*:/.test(p))
-    .map(plainRefs)
-  return { id: i, s: simp[i], t: trad[i], py: toMarks(py[i]), def: parts.slice(0, 4).join('; ') }
+    .map((p) => plainRefs(p, script))
+  return { id: i, s: simp[i], t: trad[i], hz: form(i, script), py: toMarks(py[i]), def: parts.slice(0, 4).join('; ') }
 }
 
+// Results follow the script of a Chinese query; pinyin and Vietnamese queries show simplified.
 function search(raw, mode) {
   const kind = detectKind(raw)
   if (kind === 'empty') return { kind, match: [], contains: [] }
+  const script = kind === 'hanzi' ? scriptOf(raw) : 'simp'
+  const show = (i) => brief(i, script)
   let r
   if (kind === 'hanzi') r = searchHanzi(raw.trim().replace(/\s+/g, ''))
   else if (kind === 'pinyin') {
@@ -211,12 +225,13 @@ function search(raw, mode) {
 
   if (mode === 'suggest') {
     const ids = [...r.match, ...r.contains].slice(0, SUGGEST_LIMIT)
-    return { kind, match: ids.map(brief), contains: [], total: r.match.length + r.contains.length }
+    return { kind, script, match: ids.map(show), contains: [], total: r.match.length + r.contains.length }
   }
   return {
     kind,
-    match: r.match.slice(0, RESULT_LIMIT).map(brief),
-    contains: r.contains.slice(0, RESULT_LIMIT).map(brief),
+    script,
+    match: r.match.slice(0, RESULT_LIMIT).map(show),
+    contains: r.contains.slice(0, RESULT_LIMIT).map(show),
     matchTotal: r.match.length,
     containsTotal: r.contains.length,
   }
@@ -231,24 +246,26 @@ function lookupWord(w) {
   return ids
 }
 
-function entryDetail(i) {
+function entryDetail(i, script) {
   const all = defs[i].split('/')
   const measure = all.filter((p) => /^(LT|Lượng từ)\s*:/.test(p)).map((p) => p.replace(/^(LT|Lượng từ)\s*:\s*/, ''))
   const meanings = all.filter((p) => !/^(LT|Lượng từ)\s*:/.test(p))
-  return { id: i, s: simp[i], t: trad[i], py: toMarks(py[i]), meanings, measure }
+  return { id: i, s: simp[i], t: trad[i], hz: form(i, script), alt: form(i, script === 'trad' ? 'simp' : 'trad'), py: toMarks(py[i]), meanings, measure }
 }
 
-function word(w) {
+/** script: 'trad' | 'simp', or undefined to follow the script of `w`. */
+function word(w, script = scriptOf(w)) {
   const ids = lookupWord(w)
   if (!ids.length) return null
   const s = simp[ids[0]]
+  const show = (i) => brief(i, script)
 
   const chars = []
-  const hz = [...s].filter((c) => HAN.test(c))
+  const hz = [...form(ids[0], script)].filter((c) => HAN.test(c))
   if (hz.length > 1) {
     for (const c of hz) {
       const cid = lookupWord(c)[0]
-      if (cid !== undefined) chars.push(brief(cid))
+      if (cid !== undefined) chars.push(show(cid))
     }
   }
 
@@ -265,10 +282,13 @@ function word(w) {
   return {
     s,
     t: trad[ids[0]],
-    entries: ids.map(entryDetail),
+    script,
+    hz: form(ids[0], script),
+    alt: form(ids[0], script === 'trad' ? 'simp' : 'trad'),
+    entries: ids.map((i) => entryDetail(i, script)),
     chars,
-    phrases: phrases.slice(0, 8).map(brief),
-    compounds: compounds.slice(0, 40).map(brief),
+    phrases: phrases.slice(0, 8).map(show),
+    compounds: compounds.slice(0, 40).map(show),
     compoundsTotal: compounds.length,
   }
 }
@@ -281,7 +301,7 @@ self.onmessage = async (e) => {
     else {
       await ready
       if (type === 'search') result = search(payload.q, payload.mode)
-      else if (type === 'word') result = word(payload.w)
+      else if (type === 'word') result = word(payload.w, payload.script)
     }
     self.postMessage({ id, result })
   } catch (err) {

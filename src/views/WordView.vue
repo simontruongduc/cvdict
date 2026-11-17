@@ -6,6 +6,7 @@ import StrokeOrder from '../components/StrokeOrder.vue'
 import { canFetchAiInfo, errorLog, getAiInfo, getCachedAiInfo, refreshAiInfo } from '../lib/aiInfo.js'
 import { dictReady, getWord } from '../lib/dict.js'
 import { segments } from '../lib/refs.js'
+import { wordRoute } from '../router.js'
 import { canSpeak, speak } from '../lib/speech.js'
 import { isSaved, pushHistory, toggleSaved } from '../lib/storage.js'
 
@@ -23,17 +24,21 @@ const aiError = ref('')
 const tab = computed(() => (route.query.tab === 'write' ? 'write' : 'meaning'))
 const setTab = (t) => router.replace({ query: { ...route.query, tab: t === 'meaning' ? undefined : t } })
 
+// ?zh=trad keeps the screen in traditional characters even for words written the same in both scripts.
+const routeKey = () => `${route.params.w}|${route.query.zh || ''}`
+
 async function load() {
   const w = String(route.params.w || '')
+  const key = routeKey()
   loading.value = true
   showAllCompounds.value = false
   await dictReady
-  const r = await getWord(w)
-  if (String(route.params.w) !== w) return
+  const r = await getWord(w, route.query.zh === 'trad' ? 'trad' : undefined)
+  if (routeKey() !== key) return
   word.value = r
   loading.value = false
   if (r) {
-    pushHistory({ type: 'word', s: r.s, py: r.entries[0].py })
+    pushHistory({ type: 'word', s: r.hz, py: r.entries[0].py, zh: r.script })
     loadAi(r)
   }
 }
@@ -79,7 +84,7 @@ async function refreshAi() {
     if (word.value?.s === r.s) aiRefreshing.value = false
   }
 }
-watch(() => route.params.w, (w) => w && load(), { immediate: true })
+watch(() => route.params.w && routeKey(), (k) => k && load(), { immediate: true })
 
 const head = computed(() => word.value?.entries[0])
 const readings = computed(() => [...new Set(word.value?.entries.map((e) => e.py) || [])])
@@ -89,8 +94,8 @@ const multi = computed(() => (word.value?.entries.length || 0) > 1)
 // Characters for the writing tab: from the "Từng chữ" breakdown, or the word itself if it is one character.
 const writeChars = computed(() => {
   if (!word.value) return []
-  if (word.value.chars.length) return word.value.chars.map((c) => ({ hz: c.s, py: c.py }))
-  return [...word.value.s].filter((c) => /\p{Script=Han}/u.test(c)).map((hz) => ({ hz, py: head.value.py }))
+  if (word.value.chars.length) return word.value.chars.map((c) => ({ hz: c.hz, py: c.py }))
+  return [...word.value.hz].filter((c) => /\p{Script=Han}/u.test(c)).map((hz) => ({ hz, py: head.value.py }))
 })
 
 const compounds = computed(() => (showAllCompounds.value ? word.value.compounds : word.value.compounds.slice(0, 8)))
@@ -101,13 +106,13 @@ function toggleSave() {
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(word.value.s)
+    await navigator.clipboard.writeText(word.value.hz)
     copied.value = true
     setTimeout(() => { copied.value = false }, 1500)
   } catch {}
 }
 
-const goWord = (w) => ({ name: 'word', params: { w } })
+const goWord = (w) => wordRoute(w, word.value?.script)
 
 /** Highlights the headword inside an example phrase. */
 function splitOn(text, w) {
@@ -139,15 +144,15 @@ function splitOn(text, w) {
     <template v-else>
       <section class="hero">
         <div class="hero-row">
-          <h1 class="hz hero-hz">{{ word.s }}</h1>
-          <div v-if="word.t !== word.s" class="trad">
-            <span class="trad-label">Phồn thể</span>
-            <span class="hz trad-hz">{{ word.t }}</span>
+          <h1 class="hz hero-hz">{{ word.hz }}</h1>
+          <div v-if="word.alt !== word.hz" class="trad">
+            <span class="trad-label">{{ word.script === 'trad' ? 'Giản thể' : 'Phồn thể' }}</span>
+            <span class="hz trad-hz">{{ word.alt }}</span>
           </div>
         </div>
         <div class="py-row">
           <span class="hero-py">{{ readings.join(' · ') }}</span>
-          <button v-if="canSpeak" class="speak" aria-label="Phát âm" @click="speak(word.s)"><AppIcon name="sound" :size="20" /></button>
+          <button v-if="canSpeak" class="speak" aria-label="Phát âm" @click="speak(word.hz)"><AppIcon name="sound" :size="20" /></button>
         </div>
       </section>
 
@@ -160,14 +165,14 @@ function splitOn(text, w) {
         <template v-if="tab === 'meaning'">
           <section v-for="e in word.entries" :key="e.id">
             <h2 class="group-header">
-              Nghĩa<template v-if="multi"> · <span class="reading">{{ e.py }}</span><span v-if="e.t !== word.t" class="hz"> ({{ e.t }})</span></template>
+              Nghĩa<template v-if="multi"> · <span class="reading">{{ e.py }}</span><span v-if="e.hz !== word.hz" class="hz"> ({{ e.hz }})</span></template>
             </h2>
             <div class="group card-pad">
               <ol class="meanings">
                 <li v-for="(m, i) in e.meanings" :key="i">
                   <span class="num">{{ i + 1 }}</span>
                   <span>
-                    <template v-for="(sg, k) in segments(m)" :key="k">
+                    <template v-for="(sg, k) in segments(m, word.script)" :key="k">
                       <RouterLink v-if="sg.hz" :to="goWord(sg.hz)" class="ref"><span class="hz">{{ sg.hz }}</span> <span class="ref-py">{{ sg.py }}</span></RouterLink>
                       <template v-else>{{ sg.text }}</template>
                     </template>
@@ -177,7 +182,7 @@ function splitOn(text, w) {
               <div v-if="e.measure.length" class="measure">
                 <span class="measure-label">Lượng từ</span>
                 <template v-for="(mw, i) in e.measure" :key="i">
-                  <template v-for="(sg, k) in segments(mw)" :key="k">
+                  <template v-for="(sg, k) in segments(mw, word.script)" :key="k">
                     <RouterLink v-if="sg.hz" :to="goWord(sg.hz)" class="ref"><span class="hz">{{ sg.hz }}</span> <span class="ref-py">{{ sg.py }}</span></RouterLink>
                     <template v-else>{{ sg.text }}</template>
                   </template>
@@ -225,8 +230,8 @@ function splitOn(text, w) {
           <section v-if="word.chars.length">
             <h2 class="group-header">Từng chữ</h2>
             <div class="char-grid">
-              <RouterLink v-for="c in word.chars" :key="c.id" :to="goWord(c.s)" class="char-card">
-                <span class="char-top"><span class="hz char-hz">{{ c.s }}</span><span class="char-py">{{ c.py }}</span></span>
+              <RouterLink v-for="c in word.chars" :key="c.id" :to="goWord(c.hz)" class="char-card">
+                <span class="char-top"><span class="hz char-hz">{{ c.hz }}</span><span class="char-py">{{ c.py }}</span></span>
                 <span class="char-def">{{ c.def }}</span>
               </RouterLink>
             </div>
@@ -235,8 +240,8 @@ function splitOn(text, w) {
           <section v-if="word.phrases.length">
             <h2 class="group-header">Câu / thành ngữ gợi ý</h2>
             <div class="phrases">
-              <RouterLink v-for="p in word.phrases" :key="p.id" :to="goWord(p.s)" class="phrase">
-                <div class="hz phrase-hz">{{ splitOn(p.s, word.s)[0] }}<span class="phrase-hit">{{ splitOn(p.s, word.s)[1] }}</span>{{ splitOn(p.s, word.s)[2] }}</div>
+              <RouterLink v-for="p in word.phrases" :key="p.id" :to="goWord(p.hz)" class="phrase">
+                <div class="hz phrase-hz">{{ splitOn(p.hz, word.hz)[0] }}<span class="phrase-hit">{{ splitOn(p.hz, word.hz)[1] }}</span>{{ splitOn(p.hz, word.hz)[2] }}</div>
                 <div class="phrase-py">{{ p.py }}</div>
                 <div class="phrase-def">{{ p.def }}</div>
               </RouterLink>
@@ -244,10 +249,10 @@ function splitOn(text, w) {
           </section>
 
           <section v-if="word.compounds.length">
-            <h2 class="group-header">Từ ghép chứa {{ word.s }} <span class="count">{{ word.compoundsTotal }}</span></h2>
+            <h2 class="group-header">Từ ghép chứa {{ word.hz }} <span class="count">{{ word.compoundsTotal }}</span></h2>
             <div class="group">
-              <RouterLink v-for="c in compounds" :key="c.id" :to="goWord(c.s)" class="row-link compound">
-                <span class="hz compound-hz">{{ c.s }}</span>
+              <RouterLink v-for="c in compounds" :key="c.id" :to="goWord(c.hz)" class="row-link compound">
+                <span class="hz compound-hz">{{ c.hz }}</span>
                 <span class="row-body">
                   <span class="compound-py">{{ c.py }}</span>
                   <span class="compound-def">{{ c.def }}</span>

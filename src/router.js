@@ -1,6 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from './views/HomeView.vue'
 
+/** Route to a word's detail screen; `script: 'trad'` keeps it (and the words it links to) in traditional. */
+export const wordRoute = (w, script) => ({ name: 'word', params: { w }, query: script === 'trad' ? { zh: 'trad' } : {} })
+
 // Hash history: works on any static host and inside the Capacitor webview without rewrites.
 // meta.tab marks which tab-bar item a screen belongs to (no tab = no tab bar).
 export default createRouter({

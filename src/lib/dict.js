@@ -25,4 +25,5 @@ export const dictReady = call('init', { url: new URL(`${import.meta.env.BASE_URL
 
 /** mode: 'suggest' (top hits, one list) or 'full' (match + contains lists). */
 export const search = (q, mode = 'suggest') => call('search', { q, mode })
-export const getWord = (w) => call('word', { w })
+/** script: 'trad' | 'simp' to force how the word is shown; by default it follows the script of `w`. */
+export const getWord = (w, script) => call('word', { w, script })
