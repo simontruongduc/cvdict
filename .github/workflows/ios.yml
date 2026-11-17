@@ -1,10 +1,9 @@
 # Builds an unsigned iOS .ipa. Re-sign it with your Apple ID (e.g. Sideloadly) to install it on a device.
 name: iOS build
 
+# Manual only: run it from the Actions tab (or `gh workflow run ios.yml --ref developement`).
 on:
   workflow_dispatch:
-  push:
-    branches: [main, developement]
 
 jobs:
   ipa:

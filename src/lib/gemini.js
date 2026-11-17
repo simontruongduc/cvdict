@@ -63,18 +63,20 @@ function sentencePrompt(text) {
 
 const TRANSLATE_SCHEMA = {
   type: 'OBJECT',
-  properties: { translation: { type: 'STRING' }, pinyin: { type: 'STRING' } },
-  required: ['translation', 'pinyin'],
+  properties: { source: { type: 'STRING', enum: ['zh', 'vi'] }, translation: { type: 'STRING' }, pinyin: { type: 'STRING' } },
+  required: ['source', 'translation', 'pinyin'],
 }
 
-function translatePrompt(text, { from, traditional }) {
+function translatePrompt(text, { traditional }) {
   return [
-    from === 'vi'
-      ? `Dịch đoạn văn sau từ tiếng Việt sang tiếng Trung ${traditional ? 'phồn thể (chữ Hán phồn thể)' : 'giản thể'}, tự nhiên, giữ nguyên ý và giọng văn.`
-      : 'Dịch đoạn văn sau từ tiếng Trung (giản thể hoặc phồn thể) sang tiếng Việt tự nhiên, giữ nguyên ý và giọng văn.',
+    'Tự nhận diện ngôn ngữ của đoạn văn dưới đây rồi dịch:',
+    '- Nếu là tiếng Trung (giản thể hoặc phồn thể): dịch sang tiếng Việt.',
+    `- Nếu là tiếng Việt hoặc ngôn ngữ khác: dịch sang tiếng Trung ${traditional ? 'phồn thể (chữ Hán phồn thể)' : 'giản thể'}.`,
+    'Bản dịch tự nhiên, giữ nguyên ý và giọng văn.',
     'Trả về JSON gồm:',
+    '- source: "zh" nếu đoạn văn là tiếng Trung, ngược lại "vi".',
     '- translation: chỉ bản dịch, không giải thích, giữ nguyên xuống dòng.',
-    `- pinyin: pinyin có dấu thanh của đoạn tiếng Trung (${from === 'vi' ? 'bản dịch' : 'đoạn gốc'}).`,
+    '- pinyin: pinyin có dấu thanh của phần tiếng Trung (đoạn gốc nếu source là "zh", bản dịch nếu không).',
     'Đoạn văn:',
     text,
   ].join('\n')
@@ -166,10 +168,10 @@ export async function fetchSentenceInfo(text, key) {
   return info
 }
 
-/** Quick translation. opts: { from: 'vi' | 'zh', traditional } (traditional only matters for vi → zh). */
+/** Quick translation; Gemini detects the language. opts: { traditional } (for output in Chinese). → { source, text, pinyin } */
 export async function translateText(text, opts, key) {
   const data = await generate(translatePrompt(text, opts), TRANSLATE_SCHEMA, key)
-  const out = { text: str(data?.translation), pinyin: str(data?.pinyin) }
+  const out = { source: data?.source === 'zh' ? 'zh' : 'vi', text: str(data?.translation), pinyin: str(data?.pinyin) }
   if (!out.text) throw fail('phản hồi không hợp lệ', undefined, JSON.stringify(data))
   return out
 }

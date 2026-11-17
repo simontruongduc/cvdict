@@ -1,7 +1,7 @@
 <script setup>
-// Quick Vietnamese ⇄ Chinese translation with Gemini, laid out like Apple Translate: language
-// pills with a swap button, one card with the source text on top and the translation below.
-// The "Phồn thể" switch makes Vietnamese → Chinese output traditional characters.
+// Quick Vietnamese ⇄ Chinese translation with Gemini, laid out like Apple Translate: one card with
+// the source text on top and the translation below. Gemini detects the language: Chinese goes to
+// Vietnamese, anything else to Chinese. The "phồn thể" switch makes Chinese output traditional.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import { errorLog, hasGeminiKey, translate } from '../lib/aiInfo.js'
@@ -9,7 +9,6 @@ import { getSetting, setSetting } from '../lib/settings.js'
 import { canSpeak, speak } from '../lib/speech.js'
 
 const DEBOUNCE_MS = 700
-const from = ref('vi') // 'vi' | 'zh'
 const traditional = ref(false)
 const text = ref('')
 const result = ref(null) // { text, pinyin }
@@ -20,16 +19,13 @@ const copied = ref(false)
 const input = ref(null)
 let timer, seq = 0
 
+// Detected by Gemini once translated; until then a guess from the script used.
+const from = computed(() => result.value?.source || (/\p{Script=Han}/u.test(text.value) ? 'zh' : 'vi'))
 const to = computed(() => (from.value === 'vi' ? 'zh' : 'vi'))
-const zhName = computed(() => (traditional.value ? 'Tiếng Trung (Phồn thể)' : 'Tiếng Trung (Giản thể)'))
-const langName = (l) => (l === 'vi' ? 'Tiếng Việt' : from.value === 'zh' ? 'Tiếng Trung' : zhName.value)
-const pillName = (l) => (l === 'vi' ? 'Tiếng Việt' : from.value === 'zh' ? 'Tiếng Trung' : traditional.value ? 'Trung phồn thể' : 'Trung giản thể')
-const zhVoice = computed(() => (traditional.value && from.value === 'vi' ? 'zh-TW' : 'zh-CN'))
+const voice = (lang) => (lang === 'vi' ? 'vi-VN' : lang === to.value && traditional.value ? 'zh-TW' : 'zh-CN')
 
 onMounted(async () => {
-  const [dir, trad] = await Promise.all([getSetting('translate_from'), getSetting('translate_trad')]).catch(() => [])
-  if (dir === 'zh') from.value = 'zh'
-  traditional.value = trad === '1'
+  traditional.value = (await getSetting('translate_trad').catch(() => null)) === '1'
   input.value?.focus()
 })
 
@@ -43,7 +39,7 @@ async function run() {
   noKey.value = false
   loading.value = true
   try {
-    const r = await translate(q, { from: from.value, traditional: traditional.value })
+    const r = await translate(q, { traditional: traditional.value })
     if (mine === seq) result.value = r
   } catch (e) {
     console.debug('Translate failed', e)
@@ -63,15 +59,6 @@ watch(traditional, (v) => {
   setSetting('translate_trad', v ? '1' : '').catch(() => {})
   if (from.value === 'vi') run()
 })
-
-function swap() {
-  const carried = result.value?.text
-  from.value = to.value
-  setSetting('translate_from', from.value).catch(() => {})
-  result.value = null
-  if (carried) text.value = carried
-  else run()
-}
 
 function onEnter(e) {
   if (e.shiftKey || e.isComposing) return
@@ -107,31 +94,23 @@ function autosize() {
   <div class="screen with-tabbar translate">
     <h1 class="large-title">Dịch</h1>
 
-    <div class="langs">
-      <span class="lang-pill">{{ pillName(from) }}</span>
-      <button class="swap" aria-label="Đổi chiều dịch" @click="swap"><AppIcon name="swap" :size="20" :stroke-width="2" /></button>
-      <span class="lang-pill">{{ pillName(to) }}</span>
-    </div>
-
     <div class="card">
       <section class="src">
-        <div class="lang-label">{{ langName(from) }}</div>
         <textarea
           ref="input" v-model="text" rows="2" :class="{ hz: from === 'zh' }" enterkeyhint="go"
-          :placeholder="from === 'vi' ? 'Nhập văn bản tiếng Việt' : '输入中文（简体或繁體）'"
-          :aria-label="`Văn bản ${langName(from)}`" autocapitalize="sentences" spellcheck="false"
+          placeholder="Nhập tiếng Việt hoặc tiếng Trung"
+          aria-label="Văn bản cần dịch" autocapitalize="sentences" spellcheck="false"
           @keydown.enter="onEnter"
         />
         <div v-if="text" class="actions">
           <div v-if="from === 'zh' && result?.pinyin" class="src-py">{{ result.pinyin }}</div>
           <span class="spacer" />
-          <button v-if="canSpeak" class="icon-btn" aria-label="Phát âm văn bản gốc" @click="speak(text, from === 'vi' ? 'vi-VN' : 'zh-CN')"><AppIcon name="sound" :size="20" /></button>
+          <button v-if="canSpeak" class="icon-btn" aria-label="Phát âm văn bản gốc" @click="speak(text, voice(from))"><AppIcon name="sound" :size="20" /></button>
           <button class="icon-btn" aria-label="Xóa văn bản" @click="clear"><AppIcon name="close" :size="20" /></button>
         </div>
       </section>
 
       <section v-if="text.trim()" class="dst" aria-live="polite">
-        <div class="lang-label accent">{{ langName(to) }}</div>
         <div v-if="noKey" class="notice">
           Cần Gemini key để dịch. <RouterLink :to="{ name: 'settings' }">Thêm key trong Cài đặt</RouterLink>
         </div>
@@ -142,7 +121,7 @@ function autosize() {
           <div v-if="to === 'zh' && result.pinyin" class="dst-py">{{ result.pinyin }}</div>
           <div class="actions">
             <span class="spacer" />
-            <button v-if="canSpeak" class="icon-btn" aria-label="Phát âm bản dịch" @click="speak(result.text, to === 'vi' ? 'vi-VN' : zhVoice)"><AppIcon name="sound" :size="20" /></button>
+            <button v-if="canSpeak" class="icon-btn" aria-label="Phát âm bản dịch" @click="speak(result.text, voice(to))"><AppIcon name="sound" :size="20" /></button>
             <button class="icon-btn" :aria-label="copied ? 'Đã sao chép' : 'Sao chép bản dịch'" @click="copy"><AppIcon :name="copied ? 'check' : 'copy'" :size="20" /></button>
           </div>
         </template>
@@ -153,27 +132,16 @@ function autosize() {
       <label for="trad-switch">Dịch sang chữ phồn thể</label>
       <input id="trad-switch" v-model="traditional" type="checkbox" role="switch" class="switch" />
     </div>
-    <p class="group-footer">Áp dụng khi dịch từ tiếng Việt sang tiếng Trung. Khi dịch sang tiếng Việt, nhập chữ giản thể hay phồn thể đều được.</p>
+    <p class="group-footer">Ngôn ngữ được AI tự nhận diện: tiếng Trung (giản thể hay phồn thể) dịch sang tiếng Việt, tiếng Việt dịch sang tiếng Trung. Công tắc chỉ áp dụng khi dịch sang tiếng Trung.</p>
   </div>
 </template>
 
 <style scoped>
 .translate { padding: 32px 16px 0; }
 .translate .large-title { padding: 0 4px; }
-.langs { display: flex; align-items: center; gap: 8px; margin: 18px 0 14px; }
-.lang-pill {
-  flex: 1; min-width: 0; height: 40px; line-height: 40px; border-radius: 999px; background: var(--surface); padding: 0 12px;
-  text-align: center; font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.swap {
-  width: 40px; height: 40px; flex-shrink: 0; border: none; border-radius: 999px; background: var(--surface);
-  color: var(--accent-text); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
-}
-.card { background: var(--surface); border-radius: 18px; overflow: hidden; }
-.src, .dst { padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 6px; }
+.card { margin-top: 18px; background: var(--surface); border-radius: 18px; overflow: hidden; }
+.src, .dst { padding: 16px 16px 6px; display: flex; flex-direction: column; gap: 6px; }
 .dst { border-top: 0.5px solid var(--divider); }
-.lang-label { font-size: 13px; font-weight: 600; color: var(--muted); }
-.lang-label.accent { color: var(--accent-text); }
 textarea {
   width: 100%; min-height: 64px; border: none; outline: none; resize: none; background: none; padding: 0; margin: 0;
   font: inherit; font-size: 22px; line-height: 1.4; color: var(--text); overflow: hidden;

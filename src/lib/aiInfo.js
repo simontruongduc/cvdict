@@ -89,9 +89,9 @@ export async function fetchSentence(text) {
 // Quick translations are cached in memory only, for the current session.
 const translations = new Map()
 
-/** text, { from: 'vi' | 'zh', traditional } → { text, pinyin }. Throws on any failure. */
+/** text, { traditional } → { source: 'zh' | 'vi', text, pinyin }. Throws on any failure. */
 export async function translate(text, opts) {
-  const k = JSON.stringify([text, opts.from, opts.from === 'vi' && !!opts.traditional])
+  const k = JSON.stringify([text, !!opts.traditional])
   if (translations.has(k)) return translations.get(k)
   const out = await translateText(text, opts, await requireKey())
   translations.set(k, out)
