@@ -1,6 +1,6 @@
 // Extra word info from Gemini, cached in SQLite. Cached rows are always used first (works offline
 // and without a key).
-import { GEMINI_MODEL, fetchSentenceInfo, fetchWordInfo } from './gemini.js'
+import { GEMINI_MODEL, fetchSentenceInfo, fetchWordInfo, translateText } from './gemini.js'
 import { query, run } from './db.js'
 import { geminiKey, getSetting } from './settings.js'
 
@@ -84,4 +84,16 @@ export async function fetchSentence(text) {
   await run('INSERT OR REPLACE INTO sentence_ai (text, data, model, created_at) VALUES (?, ?, ?, ?)', [text, JSON.stringify(info), GEMINI_MODEL, Date.now()])
     .catch((e) => console.debug('Sentence cache write failed', e))
   return info
+}
+
+// Quick translations are cached in memory only, for the current session.
+const translations = new Map()
+
+/** text, { from: 'vi' | 'zh', traditional } → { text, pinyin }. Throws on any failure. */
+export async function translate(text, opts) {
+  const k = JSON.stringify([text, opts.from, opts.from === 'vi' && !!opts.traditional])
+  if (translations.has(k)) return translations.get(k)
+  const out = await translateText(text, opts, await requireKey())
+  translations.set(k, out)
+  return out
 }

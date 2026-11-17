@@ -1,5 +1,5 @@
 // Gemini API calls that return structured JSON: extra study info for a dictionary word,
-// and a translation + breakdown for a free-text sentence.
+// a translation + breakdown for a free-text sentence, and quick Vietnamese ⇄ Chinese translation.
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 
 export const GEMINI_MODEL = 'gemini-3.5-flash-lite'
@@ -61,6 +61,25 @@ function sentencePrompt(text) {
   ].join('\n')
 }
 
+const TRANSLATE_SCHEMA = {
+  type: 'OBJECT',
+  properties: { translation: { type: 'STRING' }, pinyin: { type: 'STRING' } },
+  required: ['translation', 'pinyin'],
+}
+
+function translatePrompt(text, { from, traditional }) {
+  return [
+    from === 'vi'
+      ? `Dịch đoạn văn sau từ tiếng Việt sang tiếng Trung ${traditional ? 'phồn thể (chữ Hán phồn thể)' : 'giản thể'}, tự nhiên, giữ nguyên ý và giọng văn.`
+      : 'Dịch đoạn văn sau từ tiếng Trung (giản thể hoặc phồn thể) sang tiếng Việt tự nhiên, giữ nguyên ý và giọng văn.',
+    'Trả về JSON gồm:',
+    '- translation: chỉ bản dịch, không giải thích, giữ nguyên xuống dòng.',
+    `- pinyin: pinyin có dấu thanh của đoạn tiếng Trung (${from === 'vi' ? 'bản dịch' : 'đoạn gốc'}).`,
+    'Đoạn văn:',
+    text,
+  ].join('\n')
+}
+
 const isItem = (x) => x && typeof x.zh === 'string' && typeof x.py === 'string' && typeof x.vi === 'string' && x.zh.trim()
 
 // Errors carry a short Vietnamese `reason` and, for HTTP errors, the response body as `detail`.
@@ -69,7 +88,7 @@ const bodyText = (v) => (typeof v === 'string' ? v : JSON.stringify(v, null, 2) 
 
 // In the native apps the request goes through the native HTTP stack: WKWebView on iOS
 // enforces CORS for its capacitor:// origin, the native client does not.
-async function post(url, headers, body) {
+async function postOnce(url, headers, body) {
   if (Capacitor.isNativePlatform()) {
     let res
     try {
@@ -92,6 +111,17 @@ async function post(url, headers, body) {
   }
   if (!res.ok) throw fail(`HTTP ${res.status}`, undefined, bodyText(await res.text().catch(() => '')))
   return res.json()
+}
+
+// Gemini often answers 503 ("high demand") for a moment: retry once after a short pause.
+async function post(url, headers, body) {
+  try {
+    return await postOnce(url, headers, body)
+  } catch (e) {
+    if (e.reason !== 'HTTP 503') throw e
+    await new Promise((r) => setTimeout(r, 1000))
+    return postOnce(url, headers, body)
+  }
 }
 
 // Sends one prompt and returns the parsed JSON answer.
@@ -134,4 +164,12 @@ export async function fetchSentenceInfo(text, key) {
   }
   if (!info.chinese || !info.vietnamese) throw fail('phản hồi không hợp lệ')
   return info
+}
+
+/** Quick translation. opts: { from: 'vi' | 'zh', traditional } (traditional only matters for vi → zh). */
+export async function translateText(text, opts, key) {
+  const data = await generate(translatePrompt(text, opts), TRANSLATE_SCHEMA, key)
+  const out = { text: str(data?.translation), pinyin: str(data?.pinyin) }
+  if (!out.text) throw fail('phản hồi không hợp lệ', undefined, JSON.stringify(data))
+  return out
 }

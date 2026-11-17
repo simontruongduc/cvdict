@@ -6,6 +6,7 @@ import AppIcon from './AppIcon.vue'
 const route = useRoute()
 const TABS = [
   { key: 'search', to: { name: 'home' }, icon: 'search', label: 'Tra cứu' },
+  { key: 'translate', to: { name: 'translate' }, icon: 'translate', label: 'Dịch' },
   { key: 'saved', to: { name: 'saved' }, icon: 'bookmark', label: 'Đã lưu' },
   { key: 'settings', to: { name: 'settings' }, icon: 'settings', label: 'Cài đặt' },
 ]

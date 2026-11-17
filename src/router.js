@@ -12,6 +12,7 @@ export default createRouter({
     { path: '/results', name: 'results', component: () => import('./views/ResultsView.vue'), meta: { tab: 'search' } },
     { path: '/word/:w', name: 'word', component: () => import('./views/WordView.vue'), meta: { tab: 'search' } },
     { path: '/sentence', name: 'sentence', component: () => import('./views/SentenceView.vue'), meta: { tab: 'search' } },
+    { path: '/translate', name: 'translate', component: () => import('./views/TranslateView.vue'), meta: { tab: 'translate' } },
     { path: '/saved', name: 'saved', component: () => import('./views/SavedView.vue'), meta: { tab: 'saved' } },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { tab: 'settings' } },
     { path: '/history', redirect: { name: 'saved' } },

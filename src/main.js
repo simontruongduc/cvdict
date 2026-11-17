@@ -14,7 +14,7 @@ if (Capacitor.isNativePlatform()) {
     if (!window.dispatchEvent(new Event('app-back', { cancelable: true }))) return
     const name = router.currentRoute.value.name
     if (name === 'home' || name === 'welcome') NativeApp.exitApp()
-    else if (name === 'saved' || name === 'settings') router.replace({ name: 'home' })
+    else if (name === 'translate' || name === 'saved' || name === 'settings') router.replace({ name: 'home' })
     else if (canGoBack) router.back()
     else router.replace({ name: 'home' })
   })
