@@ -26,7 +26,6 @@ const voice = (lang) => (lang === 'vi' ? 'vi-VN' : lang === to.value && traditio
 
 onMounted(async () => {
   traditional.value = (await getSetting('translate_trad').catch(() => null)) === '1'
-  input.value?.focus()
 })
 
 async function run() {
@@ -143,7 +142,7 @@ function autosize() {
 .src, .dst { padding: 16px 16px 6px; display: flex; flex-direction: column; gap: 6px; }
 .dst { border-top: 0.5px solid var(--divider); }
 textarea {
-  width: 100%; min-height: 64px; border: none; outline: none; resize: none; background: none; padding: 0; margin: 0;
+  width: 100%; min-height: 168px; border: none; outline: none; resize: none; background: none; padding: 0; margin: 0;
   font: inherit; font-size: 22px; line-height: 1.4; color: var(--text); overflow: hidden;
 }
 textarea.hz { font-family: var(--hz); }
