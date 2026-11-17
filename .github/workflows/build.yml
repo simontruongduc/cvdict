@@ -1,0 +1,90 @@
+# Builds the apps: an unsigned iOS .ipa (re-sign it with your Apple ID, e.g. Sideloadly, to install it)
+# and an Android debug .apk (signed with the shared debug key in android/app, installs directly).
+name: Build apps
+
+# Manual only: run it from the Actions tab (or `gh workflow run build.yml --ref developement`),
+# choosing which platforms to build.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        options: [both, ios, android]
+        default: both
+
+jobs:
+  ios:
+    if: inputs.platform != 'android'
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+
+      - name: Archive (unsigned)
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package .ipa
+        run: |
+          mkdir -p build/Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app build/Payload/
+          (cd build && zip -qr cibao.ipa Payload)
+          unzip -l build/cibao.ipa | grep -q "App.app/en.lproj/InfoPlist.strings"
+          ls -l build/cibao.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibao-ipa
+          path: build/cibao.ipa
+          retention-days: 30
+
+  android:
+    if: inputs.platform != 'ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --console=plain
+
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk cibao.apk && ls -l cibao.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibao-apk
+          path: cibao.apk
+          retention-days: 30
