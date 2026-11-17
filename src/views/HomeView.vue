@@ -64,9 +64,6 @@ watch(() => history.value.length, (n) => { if (!n) editing.value = false })
             @pointerdown="onDown($event, keyOf(h))" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp"
             @click="open(h)" @keydown.enter="open(h)"
           >
-            <button v-if="editing" class="minus" :aria-label="`Xóa ${h.s || h.q} khỏi lịch sử`" @click.stop="remove(h)">
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--danger)" /><path d="M7 12h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round" /></svg>
-            </button>
             <template v-if="h.type === 'word'">
               <span class="row-hz">{{ h.s }}</span>
               <span class="row-body">
@@ -79,6 +76,9 @@ watch(() => history.value.length, (n) => { if (!n) editing.value = false })
               <span class="row-body"><span class="row-def">{{ h.q }}</span></span>
             </template>
             <AppIcon v-if="!editing" name="chevron" :size="14" :stroke-width="2.6" style="color: var(--chevron)" />
+            <button v-else class="minus" :aria-label="`Xóa ${h.s || h.q} khỏi lịch sử`" @click.stop="remove(h)">
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--danger)" /><path d="M7 12h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round" /></svg>
+            </button>
           </div>
         </div>
       </div>
