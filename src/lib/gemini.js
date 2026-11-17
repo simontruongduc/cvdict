@@ -21,13 +21,16 @@ const WORD_SCHEMA = {
   required: ['usage', 'examples', 'synonyms', 'antonyms'],
 }
 
-function wordPrompt({ word, pinyin, meanings }) {
+// script: 'trad' | 'simp' — every Chinese character in the answer follows the script of the word being viewed.
+function wordPrompt({ word, pinyin, meanings, script }) {
+  const hz = script === 'trad' ? 'chữ Hán phồn thể' : 'chữ Hán giản thể'
   return [
     'Bạn là trợ lý từ điển Trung–Việt cho người Việt học tiếng Trung.',
     `Từ: ${word} (${pinyin}). Nghĩa theo từ điển: ${meanings.join('; ')}.`,
+    `Mọi chữ Hán trong kết quả (trường zh, và khi nhắc tới từ trong usage) phải viết bằng ${hz}.`,
     'Trả về JSON gồm:',
     '- usage: giải thích ngắn gọn bằng tiếng Việt (2–4 câu) về cách dùng, sắc thái nghĩa, ngữ cảnh thường gặp.',
-    '- examples: 3–5 câu ví dụ tự nhiên, mỗi câu có zh (chữ Hán giản thể), py (pinyin có dấu thanh), vi (dịch tiếng Việt).',
+    `- examples: 3–5 câu ví dụ tự nhiên, mỗi câu có zh (${hz}), py (pinyin có dấu thanh), vi (dịch tiếng Việt).`,
     '- synonyms: tối đa 5 từ đồng nghĩa hoặc gần nghĩa (zh, py, vi). Không có thì để mảng rỗng.',
     '- antonyms: tối đa 5 từ trái nghĩa (zh, py, vi). Không có thì để mảng rỗng.',
   ].join('\n')

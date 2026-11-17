@@ -45,26 +45,28 @@ async function load() {
 
 // Extra Gemini info: cache first; otherwise fetch in the background. The zone is always shown:
 // empty without data, and a failed call prints its error log there.
-const aiContext = (r) => ({ word: r.s, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
+const aiContext = (r) => ({ word: r.hz, script: r.script, pinyin: r.entries[0].py, meanings: r.entries.flatMap((e) => e.meanings).slice(0, 8) })
+// Whether `r` is still the word on screen (same word in the same script).
+const current = (r) => word.value?.hz === r.hz && word.value?.script === r.script
 
 async function loadAi(r) {
   ai.value = null
   aiLoading.value = false
   aiRefreshing.value = false
   aiError.value = ''
-  const cached = await getCachedAiInfo(r.s)
-  if (word.value?.s !== r.s) return
+  const cached = await getCachedAiInfo(aiContext(r))
+  if (!current(r)) return
   if (cached) { ai.value = cached; return }
-  if (!(await canFetchAiInfo()) || word.value?.s !== r.s) return
+  if (!(await canFetchAiInfo()) || !current(r)) return
   aiLoading.value = true
   try {
     const info = await getAiInfo(aiContext(r))
-    if (word.value?.s === r.s) ai.value = info
+    if (current(r)) ai.value = info
   } catch (e) {
     console.debug('AI info failed', e)
-    if (word.value?.s === r.s) aiError.value = errorLog(e)
+    if (current(r)) aiError.value = errorLog(e)
   } finally {
-    if (word.value?.s === r.s) aiLoading.value = false
+    if (current(r)) aiLoading.value = false
   }
 }
 
@@ -76,12 +78,12 @@ async function refreshAi() {
   aiError.value = ''
   try {
     const info = await refreshAiInfo(aiContext(r))
-    if (word.value?.s === r.s) ai.value = info
+    if (current(r)) ai.value = info
   } catch (e) {
     console.debug('AI refresh failed', e)
-    if (word.value?.s === r.s) aiError.value = errorLog(e)
+    if (current(r)) aiError.value = errorLog(e)
   } finally {
-    if (word.value?.s === r.s) aiRefreshing.value = false
+    if (current(r)) aiRefreshing.value = false
   }
 }
 watch(() => route.params.w && routeKey(), (k) => k && load(), { immediate: true })

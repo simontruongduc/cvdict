@@ -14,8 +14,12 @@ async function readCache(word) {
 const writeCache = (word, info) =>
   run('INSERT OR REPLACE INTO ai_info (word, data, model, created_at) VALUES (?, ?, ?, ?)', [word, JSON.stringify(info), GEMINI_MODEL, Date.now()])
 
+// Simplified and traditional views of a word are cached separately (their examples use different
+// characters). Simplified rows keep the plain word as key, as before.
+const cacheKey = (ctx) => (ctx.script === 'trad' ? `trad:${ctx.word}` : ctx.word)
+
 /** Cached info only, never touches the network. */
-export const getCachedAiInfo = (word) => readCache(word).catch(() => null)
+export const getCachedAiInfo = (ctx) => readCache(cacheKey(ctx)).catch(() => null)
 
 // The key ref may still be loading from SQLite when the first detail screen opens.
 const currentKey = async () => geminiKey.value || (await getSetting('gemini_key').catch(() => null))
@@ -23,9 +27,9 @@ const currentKey = async () => geminiKey.value || (await getSetting('gemini_key'
 /** Whether getAiInfo may call Gemini for an uncached word right now. */
 export const canFetchAiInfo = async () => navigator.onLine !== false && !!(await currentKey())
 
-/** ctx: { word, pinyin, meanings } → info, or null without a key / offline. Rejects when the call fails. */
+/** ctx: { word, pinyin, meanings, script } → info, or null without a key / offline. Rejects when the call fails. */
 export function getAiInfo(ctx) {
-  const { word } = ctx
+  const word = cacheKey(ctx)
   if (inflight.has(word)) return inflight.get(word)
   const p = (async () => {
     try {
@@ -65,7 +69,7 @@ const requireKey = async () => {
 export async function refreshAiInfo(ctx) {
   const key = await requireKey()
   const info = await fetchWordInfo(ctx, key)
-  await writeCache(ctx.word, info)
+  await writeCache(cacheKey(ctx), info)
   return info
 }
 
