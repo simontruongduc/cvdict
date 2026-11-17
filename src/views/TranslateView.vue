@@ -146,7 +146,7 @@ textarea {
   font: inherit; font-size: 22px; line-height: 1.4; color: var(--text); overflow: hidden;
 }
 textarea.hz { font-family: var(--hz); }
-textarea::placeholder { color: var(--chevron); }
+textarea::placeholder { color: var(--chevron); font-size: 17px; }
 .out { margin: 0; font-size: 22px; line-height: 1.4; color: var(--accent); white-space: pre-wrap; word-break: break-word; transition: opacity 0.15s; }
 .out.hz { font-family: var(--hz); }
 .out.stale { opacity: 0.5; }
